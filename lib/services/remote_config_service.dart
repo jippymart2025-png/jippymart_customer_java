@@ -2,13 +2,6 @@ import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/foundation.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
 
-/// Handles fetching runtime configuration from Firebase Remote Config.
-///
-/// Usage:
-/// ```dart
-/// await RemoteConfigService.instance.initialize();
-/// final apiBaseUrl = RemoteConfigService.instance.baseUrl;
-/// ```
 class RemoteConfigService {
   RemoteConfigService._internal();
 
@@ -33,7 +26,7 @@ class RemoteConfigService {
       final fetchedUrl = _remoteConfig.getString('base_url');
       if (fetchedUrl.isNotEmpty && !fetchedUrl.contains('{{')) {
         // AppConst.baseUrl = "https://test.jippymart.in/api/";
-        AppConst.baseUrl = "http://187.127.156.147:8084/api/";
+        AppConst.baseUrl = "https://test.jippymart.in/api/";
         // AppConst.baseUrl = "http://192.168.88.25:8082/api/";
         // AppConst.baseUrl = _normalizeUrl(fetchedUrl);
         if (kDebugMode) {

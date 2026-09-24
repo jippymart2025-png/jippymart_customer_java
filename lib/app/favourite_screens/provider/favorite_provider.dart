@@ -204,7 +204,7 @@ class FavouriteProvider extends ChangeNotifier {
       }
 
       final uri = Uri.parse(
-        '${AppConst.outletBaseUrl}fm/customer/favorites/getFavoriteRecentFrequentOutlets',
+        '${AppConst.defaultBaseUrl}fm/customer/favorites/getFavoriteRecentFrequentOutlets',
       ).replace(queryParameters: {'customerId': customerId.toString()});
 
       final response = await http
@@ -280,7 +280,7 @@ class FavouriteProvider extends ChangeNotifier {
       final response = await http
           .post(
             Uri.parse(
-              '${AppConst.outletBaseUrl}fm/customer/favorites/toggleFavouriteOutletOrProduct',
+              '${AppConst.defaultBaseUrl}fm/customer/favorites/toggleFavouriteOutletOrProduct',
             ),
             headers: await getHeaders(),
             body: json.encode({
@@ -326,7 +326,7 @@ class FavouriteProvider extends ChangeNotifier {
       final response = await http
           .get(
             Uri.parse(
-              '${AppConst.outletBaseUrl}fm/customer/favorites/getFavoriteProducts?customerId=$userId',
+              '${AppConst.defaultBaseUrl}fm/customer/favorites/getFavoriteProducts?customerId=$userId',
             ),
             headers: await getHeaders(),
           )
@@ -410,7 +410,7 @@ class FavouriteProvider extends ChangeNotifier {
       }
 
       final url =
-          '${AppConst.outletBaseUrl}fm/customer/favorites/toggleFavouriteOutletOrProduct';
+          '${AppConst.defaultBaseUrl}fm/customer/favorites/toggleFavouriteOutletOrProduct';
 
       debugPrint("URL: $url");
 

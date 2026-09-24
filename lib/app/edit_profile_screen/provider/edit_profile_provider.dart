@@ -148,7 +148,7 @@ class EditProfileProvider extends ChangeNotifier {
   ) async {
     try {
       final uri = Uri.parse(
-        '${AppConst.outletBaseUrl}co/customers/$customerId',
+        '${AppConst.defaultBaseUrl}co/customers/$customerId',
       );
       final response = await http
           .get(uri, headers: await getHeaders())
@@ -373,7 +373,7 @@ class EditProfileProvider extends ChangeNotifier {
     try {
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse('${AppConst.outletBaseUrl}driver/saveOrUpdateProfilePic'),
+        Uri.parse('${AppConst.defaultBaseUrl}driver/saveOrUpdateProfilePic'),
       );
 
       final authHeaders = await getHeaders();
@@ -467,7 +467,7 @@ class EditProfileProvider extends ChangeNotifier {
       print('[EDIT_PROFILE] updateCustomerProfile body: $body');
 
       final response = await http.put(
-        Uri.parse('${AppConst.outletBaseUrl}co/customers/$customerId'),
+        Uri.parse('${AppConst.defaultBaseUrl}co/customers/$customerId'),
         headers: headers,
         body: jsonEncode(body),
       );
@@ -522,7 +522,7 @@ class EditProfileProvider extends ChangeNotifier {
 
       final response = await http.put(
         Uri.parse(
-          '${AppConst.outletBaseUrl}co/customers/updateCustomerProfilePic',
+          '${AppConst.defaultBaseUrl}co/customers/updateCustomerProfilePic',
         ),
         headers: headers,
         body: jsonEncode(body),

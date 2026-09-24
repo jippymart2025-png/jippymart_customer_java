@@ -31,7 +31,7 @@ class CommunityService {
   }) async {
     final response = await http.post(
       Uri.parse(
-        "${AppConst.outletBaseUrl}co/community-order/AddOrDropMembersFromCommunity",
+        "${AppConst.defaultBaseUrl}co/community-order/AddOrDropMembersFromCommunity",
       ),
       headers: await getHeaders(),
       body: jsonEncode({

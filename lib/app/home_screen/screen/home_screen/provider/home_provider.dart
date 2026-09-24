@@ -705,7 +705,7 @@ class HomeProvider extends ChangeNotifier {
     try {
       final url =
           Uri.parse(
-            '${AppConst.outletBaseUrl}fm/banners/getActiveBanners',
+            '${AppConst.defaultBaseUrl}fm/banners/getActiveBanners',
           ).replace(
             queryParameters: {
               'lat': latitude.toString(),

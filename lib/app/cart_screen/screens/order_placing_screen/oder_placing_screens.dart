@@ -67,46 +67,46 @@ class _OrderPlacingScreenState extends State<OrderPlacingScreen>
         cart.syncWalletBalanceFromWallet(wp.moneyBalanceRupees);
       } catch (_) {}
     });
-  }
+    }
 
-  @override
-  void dispose() {
-    _pulseController.dispose();
-    _successController.dispose();
-    super.dispose();
-  }
+    @override
+    void dispose() {
+      _pulseController.dispose();
+      _successController.dispose();
+      super.dispose();
+    }
 
-  void _triggerSuccessAnim() {
-    _pulseController.stop();
-    _successController.forward();
-  }
+    void _triggerSuccessAnim() {
+      _pulseController.stop();
+      _successController.forward();
+    }
 
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Consumer2<CartControllerProvider, OrderPlacingProvider>(
-        builder: (context, cartController, controller, _) {
-          final isPlaced =
-              controller.isPlacing ||
-              (controller.orderModel.id != null &&
-                  controller.orderModel.id.toString().isNotEmpty);
+    @override
+    Widget build(BuildContext context) {
+      return SafeArea(
+        child: Consumer2<CartControllerProvider, OrderPlacingProvider>(
+          builder: (context, cartController, controller, _) {
+            final isPlaced =
+                controller.isPlacing ||
+                (controller.orderModel.id != null &&
+                    controller.orderModel.id.toString().isNotEmpty);
 
-          if (isPlaced &&
-              !_successController.isAnimating &&
-              _successController.value == 0) {
-            WidgetsBinding.instance.addPostFrameCallback(
-              (_) => _triggerSuccessAnim(),
-            );
-          }
+            if (isPlaced &&
+                !_successController.isAnimating &&
+                _successController.value == 0) {
+              WidgetsBinding.instance.addPostFrameCallback(
+                (_) => _triggerSuccessAnim(),
+              );
+            }
 
-          return WillPopScope(
-            onWillPop: () async {
-              cartController.forceRefreshCart();
-              return true;
-            },
-            child: Scaffold(
-              backgroundColor: Colors.white,
-              appBar: AppBar(
+            return WillPopScope(
+              onWillPop: () async {
+                cartController.forceRefreshCart();
+                return true;
+              },
+              child: Scaffold(
+                backgroundColor: Colors.white,
+                appBar: AppBar(
                 backgroundColor: Colors.white,
                 elevation: 0,
                 leading: isPlaced

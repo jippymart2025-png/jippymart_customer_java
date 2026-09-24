@@ -271,7 +271,7 @@ class FireStoreUtils {
     try {
       final uri =
           Uri.parse(
-            '${AppConst.outletBaseUrl}fm/outlets/getOutletDetails',
+            '${AppConst.defaultBaseUrl}fm/outlets/getOutletDetails',
           ).replace(
             queryParameters: {
               'outletId': vendorId,

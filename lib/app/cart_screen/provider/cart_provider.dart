@@ -8,6 +8,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
 import 'package:jippymart_customer/app/auth_screen/phone_number_screen.dart';
 import 'package:jippymart_customer/app/cart_screen/screens/order_placing_screen/oder_placing_screens.dart';
+import 'package:jippymart_customer/app/cart_screen/screens/order_placing_screen/order_failed_screen.dart';
 import 'package:jippymart_customer/app/cart_screen/screens/order_placing_screen/provider/order_placing_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/wallet_screen/provider/wallet_provider.dart';
@@ -28,7 +29,7 @@ import 'package:jippymart_customer/models/tax_model.dart';
 import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/payment/rozorpayConroller.dart';
-import 'package:jippymart_customer/payment/payu/model/payupayload.dart';
+import 'package:jippymart_customer/payment/payu/payu_hash.dart';
 import 'package:jippymart_customer/payment/payu/payuwebview.dart';
 import 'package:jippymart_customer/services/cart_api_service.dart';
 import 'package:jippymart_customer/services/cart_provider.dart';
@@ -315,6 +316,21 @@ class CartControllerProvider extends ChangeNotifier {
   Map<String, dynamic>? _lastInitiatePaymentResponse;
   String _lastInitiateConfigKey = '';
 
+  /// Re-entrancy lock acquired at the TOP of `processPayment`, BEFORE any
+  /// payment API call. Prevents a second flow from starting due to a
+  /// double-tap, rebuild, callback or async race (requirements #10/#11).
+  bool _paymentFlowInProgress = false;
+
+  /// When PayU replies "Too many Requests", the checkout is blocked until this
+  /// timestamp (requirement #8). No auto-retry — the user is asked to wait
+  /// 60 seconds, and tapping again will be blocked until the window passes.
+  DateTime? _payuRateLimitedUntil;
+
+  /// Escalating backoff (seconds) applied on repeated PayU rate-limits so the
+  /// app does not hammer PayU's throttle window. First block: 60s, then 120s,
+  /// 240s, capped at 300s. Reset to 0 after a successful checkout.
+  int _payuBackoffSeconds = 0;
+
   String? get initiatePaymentId => _lastInitiatePaymentId;
   CustomerCheckoutModel? checkoutSummary;
   bool _useServerCheckoutPricing = false;
@@ -529,7 +545,19 @@ class CartControllerProvider extends ChangeNotifier {
 
   static String? _extractPaymentReference(Map<String, dynamic>? data) {
     if (data == null) return null;
+
+    if (data.containsKey('transaction') && data['transaction'] is Map) {
+      final txn = data['transaction'] as Map;
+      for (final key in ['restaurant_order_id', 'txnid', 'id']) {
+        final value = txn[key];
+        if (value != null && value.toString().trim().isNotEmpty) {
+          return value.toString();
+        }
+      }
+    }
+
     for (final key in [
+      'orderId',
       'payment_id',
       'paymentId',
       'order_ref',
@@ -602,6 +630,43 @@ class CartControllerProvider extends ChangeNotifier {
         } catch (_) {}
       }
       return false;
+    }
+  }
+
+  /// Always calls POST /div/payment/initiate WITHOUT the config-key cache.
+  ///
+  /// Gateways like PayU must never receive a `txnid` that has already been
+  /// submitted — doing so makes PayU reject the payment with
+  /// "Too many Requests. Please try after 60 seconds." This makes sure every
+  /// PayU attempt posts a brand-new, never-burned transaction reference.
+  Future<Map<String, dynamic>?> forcePaymentInitiate() async {
+    Map<String, dynamic>? payload = const {};
+    try {
+      payload = await buildPaymentInitiatePayload();
+      if (payload == null) {
+        debugPrint('[INITIATE_PAYMENT] Could not build payload (force)');
+        return null;
+      }
+      final response = await CartApiService.initiatePayment(payload: payload);
+      _lastInitiatePaymentResponse = response;
+      _lastInitiatePaymentId = _extractPaymentReference(response);
+      _lastInitiateConfigKey = _paymentInitiateConfigKey(
+        selectedPaymentMethod,
+        useWalletBalance,
+        walletToUse,
+        totalAmount,
+        paymentGatewayAmount,
+      );
+      debugPrint(
+        '[INITIATE_PAYMENT] FRESH reference: $_lastInitiatePaymentId',
+      );
+      return response;
+    } catch (e) {
+      debugPrint('[INITIATE_PAYMENT] Error (force): $e');
+      _lastInitiatePaymentId = null;
+      _lastInitiatePaymentResponse = null;
+      _lastInitiateConfigKey = '';
+      return null;
     }
   }
 
@@ -2768,12 +2833,17 @@ class CartControllerProvider extends ChangeNotifier {
 
       ShowToastDialog.showToast("Payment failed: ${response.message}".tr);
       notifyListeners();
+
+      // Also fetch payment status from backend and show order placed screen
+      placeOrderAfterPayment();
     } catch (e) {
       ShowToastDialog.closeLoader();
       isPaymentInProgress = false;
       endOrderProcessing();
       ShowToastDialog.showToast("Payment failed. Please try again.".tr);
       notifyListeners();
+
+      placeOrderAfterPayment();
     }
   }
 
@@ -3063,9 +3133,10 @@ class CartControllerProvider extends ChangeNotifier {
       // Add global lock at the beginning
       _lockGlobal();
 
-      if (!isPaymentCompleted || _lastPaymentId == null) {
+      final orderId = _lastInitiatePaymentId ?? _lastPaymentId;
+      if (orderId == null || orderId.isEmpty) {
         debugPrint(
-          '❌ [ORDER_PLACEMENT] Payment validation failed - no valid payment found',
+          '❌ [ORDER_PLACEMENT] Payment validation failed - no valid order ID found',
         );
         try {
           ShowToastDialog.closeLoader();
@@ -3124,37 +3195,82 @@ class CartControllerProvider extends ChangeNotifier {
       }
 
       // 🔑 CRITICAL: Show loader only if app is in foreground (non-blocking)
-      // Don't block order placement if UI is not available (app backgrounded)
       try {
         ShowToastDialog.showLoader("Placing your order...".tr);
       } catch (e) {
         debugPrint(
           '⚠️ [ORDER_PLACEMENT] Could not show loader (app may be backgrounded): $e',
         );
-        // Continue with order placement even if loader fails
       }
 
-      // 🔑 CRITICAL: Call the actual order creation immediately
-      // This API call will execute even if app is in background
       debugPrint(
-        '🌐 [ORDER_CREATION_FLOW] placeOrderAfterPayment → setOrder (payment_id=$_lastPaymentId)',
+        '🌐 [ORDER_CREATION_FLOW] Calling getOrderPaymentStatus for orderId: $orderId',
       );
-      try {
-        // 🔑 CRITICAL: setOrder() makes API calls directly - works in background
-        await setOrder();
 
-        // 🔑 CRITICAL: Clear persistent payment state after successful order placement
-        // This ensures we don't retry placing the same order
+      final statusResponse = await CartApiService.getOrderPaymentStatus(
+        orderId,
+      );
+
+      if (statusResponse != null) {
+        final returnedOrderId = statusResponse['orderId'] ?? orderId;
+        final orderModel = OrderModel()..id = returnedOrderId.toString();
+        final paymentStatus =
+            statusResponse['paymentStatus']?.toString() ??
+            statusResponse['status']?.toString() ??
+            '';
+        final paymentSucceeded = _isSuccessfulPaymentStatus(paymentStatus);
+
+        _isOrderBeingCreated = false;
+        _isOrderCreationInProgress = false;
+        _currentOrderPaymentId = null;
+        isPaymentInProgress = false;
+        isPaymentCompleted = false;
+        _lastPaymentId = null;
+        _lastPaymentTime = null;
+        selectedCouponModel = CouponModel();
+        couponCodeController.text = '';
+        couponAmount = 0.0;
+        await calculatePrice();
         await _clearPersistentPaymentState();
-        debugPrint(
-          '✅ [ORDER_PLACEMENT] Order placed successfully. Persistent state cleared.',
-        );
-      } catch (orderError, orderStackTrace) {
-        debugPrint('❌ [ORDER_PLACEMENT] Error in setOrder: $orderError');
-        debugPrint('❌ [ORDER_PLACEMENT] Stack trace: $orderStackTrace');
 
-        // Re-throw to be caught by retry mechanism
-        rethrow;
+        try {
+          ShowToastDialog.closeLoader();
+        } catch (e) {
+          debugPrint('⚠️ Could not close loader: $e');
+        }
+
+        endOrderProcessing();
+        _unlockGlobal();
+
+        if (paymentSucceeded) {
+          try {
+            orderPlacingProvider.initFunction(orderModels: orderModel);
+            Get.off(() => const OrderPlacingScreen());
+          } catch (e) {
+            debugPrint(
+              '⚠️ [ORDER_CREATION] Could not navigate to OrderPlacingScreen (app may be backgrounded): $e',
+            );
+          }
+        } else {
+          debugPrint(
+            '❌ [ORDER_CREATION] Order not placed. paymentStatus="$paymentStatus" '
+            'message="${statusResponse['message'] ?? ''}"',
+          );
+          try {
+            Get.off(
+              () => OrderFailedScreen(
+                orderId: returnedOrderId.toString(),
+                message: statusResponse['message']?.toString(),
+              ),
+            );
+          } catch (e) {
+            debugPrint(
+              '⚠️ [ORDER_CREATION] Could not navigate to OrderFailedScreen (app may be backgrounded): $e',
+            );
+          }
+        }
+      } else {
+        throw Exception("Failed to get order payment status from backend");
       }
     } catch (e, stackTrace) {
       _isOrderBeingCreated = false;
@@ -3165,27 +3281,20 @@ class CartControllerProvider extends ChangeNotifier {
         _processedPaymentIds.remove(_lastPaymentId);
       }
 
-      // 🔑 CRITICAL: Close loader and show error only if app is in foreground
-      // Don't block or fail if app is backgrounded
       try {
         ShowToastDialog.closeLoader();
-        if (e.toString().contains('Delivery zone validation failed') ||
-            e.toString().contains('Delivery distance validation failed')) {
-          DeliveryZoneAlertDialog.showZoneMismatchError();
-        } else {
-          ShowToastDialog.showToast(
-            "An error occurred while placing your order. Your payment is safe. Please try again."
-                .tr,
-          );
-        }
+        ShowToastDialog.showToast(
+          "An error occurred while placing your order. Your payment is safe. Please try again."
+              .tr,
+        );
       } catch (uiError) {
         debugPrint(
           '⚠️ [ORDER_PLACEMENT] Could not show UI (app may be backgrounded): $uiError',
         );
-        // Continue - order placement will retry automatically
       }
+
       endOrderProcessing();
-      _unlockGlobal(); // Unlock on error
+      _unlockGlobal();
       debugPrint('❌ [ORDER_PLACEMENT] Error in placeOrderAfterPayment: $e');
       debugPrint('❌ [ORDER_PLACEMENT] Stack trace: $stackTrace');
       rethrow;
@@ -3193,6 +3302,19 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   // Helper method to create order billing via API
+  bool _isSuccessfulPaymentStatus(String status) {
+    if (status.isEmpty) return false;
+    final s = status.toUpperCase().trim();
+    return s.contains('SUCCESS') ||
+        s.contains('TXN_SUCCESS') ||
+        s.contains('COMPLETED') ||
+        s.contains('CAPTURED') ||
+        s == 'PAID' ||
+        s == 'AUTHORIZED' ||
+        s == 'SETTLED' ||
+        s == 'FULFILLED';
+  }
+
   Future<void> _createOrderBilling(
     String orderId,
     String totalAmount,
@@ -7636,6 +7758,14 @@ class CartControllerProvider extends ChangeNotifier {
     CartControllerProvider controller,
     BuildContext context,
   ) async {
+    // 🔒 Acquire the payment-flow lock BEFORE any API/network work so a
+    // double-tap, rebuild or async race can never start a second flow for the
+    // same user action. Released in `finally`.
+    if (controller._paymentFlowInProgress) {
+      debugPrint('🔒 [PAYU] processPayment SKIPPED - flow already running');
+      return;
+    }
+    controller._paymentFlowInProgress = true;
     _startOperation('processPayment');
 
     try {
@@ -7685,10 +7815,17 @@ class CartControllerProvider extends ChangeNotifier {
       // 🔑 INTEGRATE: POST /div/payment/initiate before placing the order
       // for every payment method. The returned reference is used as the
       // order's payment_id.
-      final initiated = await controller.initiatePaymentIfNeeded();
-      if (!initiated) {
-        controller.endOrderProcessing();
-        return;
+      // PayU is handled later by [_processPayUPayment] which forces a FRESH
+      // initiate so a burned txnid is never reused — calling it here too would
+      // POST /div/payment/initiate twice in a row.
+      final isPayUSelected =
+          controller.selectedPaymentMethod == PaymentGateway.payu.name;
+      if (!isPayUSelected) {
+        final initiated = await controller.initiatePaymentIfNeeded();
+        if (!initiated) {
+          controller.endOrderProcessing();
+          return;
+        }
       }
 
       if (controller.selectedPaymentMethod == PaymentGateway.cod.name) {
@@ -7714,6 +7851,8 @@ class CartControllerProvider extends ChangeNotifier {
       controller.endOrderProcessing();
     } finally {
       _endOperation('processPayment');
+      controller._paymentFlowInProgress = false;
+      debugPrint('🔓 [PAYU] LOCK RELEASED (processPayment)');
     }
   }
 
@@ -7721,51 +7860,187 @@ class CartControllerProvider extends ChangeNotifier {
     CartControllerProvider controller,
     BuildContext context,
   ) async {
-    final response = controller._lastInitiatePaymentResponse;
+    // ⏳ PayU told us to try again after 60 seconds on a previous attempt.
+    // Block the checkout (and any fresh initiate POST) until that window
+    // passes — this is a throttle guard, not an auto-retry (requirement #8).
+    final now = DateTime.now();
+    if (controller._payuRateLimitedUntil != null &&
+        now.isBefore(controller._payuRateLimitedUntil!)) {
+      final remaining = controller
+          ._payuRateLimitedUntil!
+          .difference(now)
+          .inSeconds;
+      debugPrint('⏳ [PAYU] RATE LIMITED - checkout blocked ($remaining s left)');
+      controller.endOrderProcessing();
+      ShowToastDialog.showToast(
+        'PayU is temporarily busy. Please try again after 60 seconds.'.tr,
+      );
+      return;
+    }
+
+    // 🔑 CRITICAL: Always ask the backend for a FRESH transaction reference.
+    // Reusing a cached initiate whose txnid was already POSTed to PayU is
+    // exactly what triggers PayU's "Too many Requests" rate-limit.
+    debugPrint('[PAYU] INITIATE START');
+    final response = await controller.forcePaymentInitiate();
     if (response == null ||
-        !response.containsKey('payuUrl') ||
-        !response.containsKey('payUParams')) {
+        !response.containsKey('payment_url') ||
+        !response.containsKey('payload')) {
       ShowToastDialog.showToast('Invalid PayU payment initialization'.tr);
       controller.endOrderProcessing();
       return;
     }
 
-    final payuUrl = response['payuUrl'] as String;
-    final payUParams = response['payUParams'] as Map<String, dynamic>;
-
-    final surl = 'https://jippymart.com/success';
-    final furl = 'https://jippymart.com/failure';
-
-    final payload = PayUPayload(
-      key: payUParams['key']?.toString() ?? '',
-      txnid: payUParams['txnid']?.toString() ?? '',
-      amount: payUParams['amount']?.toString() ?? '',
-      productinfo: payUParams['productinfo']?.toString() ?? '',
-      firstname: payUParams['firstname']?.toString() ?? '',
-      lastname: payUParams['lastname']?.toString() ?? '',
-      email: payUParams['email']?.toString() ?? '',
-      phone: payUParams['phone']?.toString() ?? Constant.userModel?.phoneNumber?.trim() ?? '',
-      surl: surl,
-      furl: furl,
-      hash: response['payUHash']?.toString() ?? '',
-      udf1: '',
-      udf2: '',
-      udf3: '',
-      udf4: '',
-      udf5: '',
+    final payuUrl = response['payment_url'] as String;
+    // The server's `payload` map is the PayU form. No re-parsing: the WebView
+    // turns every entry into a hidden form field, so nothing is dropped.
+    final formFields = Map<String, dynamic>.from(
+      response['payload'] as Map,
     );
+
+    // PayU posts the field as `phone`; the server payload names it
+    // `phoneNumber`. Normalise but keep everything else untouched.
+    final phone =
+        formFields['phone']?.toString() ??
+        formFields['phoneNumber']?.toString() ??
+        Constant.userModel?.phoneNumber?.trim() ??
+        '';
+    formFields.remove('phoneNumber');
+    formFields.remove('payUHash');
+    if (phone.isNotEmpty) {
+      formFields['phone'] = phone;
+    }
+
+    var hash =
+        formFields['hash']?.toString() ??
+        response['payUHash']?.toString() ??
+        '';
+    if (hash.isEmpty) {
+      debugPrint('❌ [PAYU] No hash received from server: $response');
+      ShowToastDialog.showToast(
+        'Invalid PayU hash from server. Please try again.'.tr,
+      );
+      controller.endOrderProcessing();
+      return;
+    }
+
+    // The WebView closes the checkout when it lands on these URLs.
+    formFields['surl'] ??= 'https://jippymart.com/success';
+    formFields['furl'] ??= 'https://jippymart.com/failure';
+
+    // ── Hash resolution ──
+    // When the build is compiled with `--dart-define=PAYU_SALT=<merchant-salt>`,
+    // recompute the hash from the EXACT values being POSTed. If it differs from
+    // the server hash, the server is wrong — use the client hash so PayU
+    // accepts the form. Without the define, the server hash is used unchanged.
+    final saltOverride = const String.fromEnvironment('PAYU_SALT');
+    if (saltOverride.isNotEmpty) {
+      final clientHash = PayUHashUtil.compute(
+        key: formFields['key']?.toString() ?? '',
+        txnid: formFields['txnid']?.toString() ?? '',
+        amount: formFields['amount']?.toString() ?? '',
+        productinfo: formFields['productinfo']?.toString() ?? '',
+        firstname: formFields['firstname']?.toString() ?? '',
+        email: formFields['email']?.toString() ?? '',
+        udf1: formFields['udf1']?.toString() ?? '',
+        udf2: formFields['udf2']?.toString() ?? '',
+        udf3: formFields['udf3']?.toString() ?? '',
+        udf4: formFields['udf4']?.toString() ?? '',
+        udf5: formFields['udf5']?.toString() ?? '',
+        salt: saltOverride,
+      );
+      final matches = clientHash == hash;
+      debugPrint(
+        '🔎 [PAYU] Hash verify: ${matches ? 'MATCH ✅ (server hash is valid)' : 'MISMATCH ❌'}',
+      );
+      final source = PayUHashUtil.sourceString(
+        key: formFields['key']?.toString() ?? '',
+        txnid: formFields['txnid']?.toString() ?? '',
+        amount: formFields['amount']?.toString() ?? '',
+        productinfo: formFields['productinfo']?.toString() ?? '',
+        firstname: formFields['firstname']?.toString() ?? '',
+        email: formFields['email']?.toString() ?? '',
+        udf1: formFields['udf1']?.toString() ?? '',
+        udf2: formFields['udf2']?.toString() ?? '',
+        udf3: formFields['udf3']?.toString() ?? '',
+        udf4: formFields['udf4']?.toString() ?? '',
+        udf5: formFields['udf5']?.toString() ?? '',
+        salt: saltOverride,
+      );
+      if (matches) {
+        debugPrint('🔎 [PAYU] Keeping server hash.');
+      } else {
+        debugPrint('🔎 [PAYU] source = $source');
+        debugPrint('🔎 [PAYU] expected (client) = $clientHash');
+        debugPrint('🔎 [PAYU] server          = $hash');
+        debugPrint(
+          '🔑 [PAYU] Server hash is INVALID for this key/salt. '
+          'Using CLIENT-computed hash so PayU accepts the form. '
+          'This only runs in builds compiled with --dart-define=PAYU_SALT.',
+        );
+        hash = clientHash;
+      }
+    }
+    formFields['hash'] = hash;
+
+    final txnid = formFields['txnid']?.toString() ?? '';
+    debugPrint('🧾 [PAYU] TXNID: $txnid');
+    debugPrint('🎯 [PAYU] OPEN CHECKOUT (txnid: $txnid, url: $payuUrl)');
+
+    // 🔑 CRITICAL: This txnid is about to be consumed by PayU. Invalidate the
+    // cached initiate so a retry calls /div/payment/initiate again and gets a
+    // NEW txnid — PayU rejects / rate-limits a txnid that is POSTed twice.
+    controller._lastInitiatePaymentId = null;
+    controller._lastInitiateConfigKey = '';
+    controller._lastInitiatePaymentResponse = null;
 
     final result = await PayUWebView.open(
       context,
       paymentUrl: payuUrl,
-      payload: payload,
+      formFields: formFields,
     );
 
     if (result != null && result.outcome == PayUCheckoutOutcome.success) {
-      await controller.placeOrder(context);
+      // Payment accepted — clear any previous rate-limit backoff.
+      controller._payuBackoffSeconds = 0;
+      controller._payuRateLimitedUntil = null;
+      // Setup payment states before finalizing order
+      controller._lastPaymentId = txnid;
+      controller.isPaymentCompleted = true;
+      controller.isPaymentInProgress = false;
+      await controller.placeOrderAfterPayment();
+    } else if (result != null &&
+        result.outcome == PayUCheckoutOutcome.tooManyRequests) {
+      // PayU throttled this transaction. Do NOT auto-retry — record a block
+      // window (escalating after repeated hits) and let the user act on the
+      // message. Do NOT mark the order as a failed payment.
+      final backoff = controller._payuBackoffSeconds <= 0
+          ? 60
+          : controller._payuBackoffSeconds * 2;
+      controller._payuBackoffSeconds = backoff > 300 ? 300 : backoff;
+      controller._payuRateLimitedUntil = now.add(
+        Duration(seconds: controller._payuBackoffSeconds),
+      );
+      debugPrint(
+        '⚠️ [PAYU] RATE LIMITED (txnid: $txnid) - blocked for '
+        '${controller._payuBackoffSeconds}s',
+      );
+      controller.endOrderProcessing();
+      ShowToastDialog.showToast(
+        'PayU is temporarily busy. Please try again after 60 seconds.'.tr,
+      );
     } else {
+      if (result != null && result.outcome == PayUCheckoutOutcome.cancelled) {
+        debugPrint('❌ [PAYU] CHECKOUT CLOSED (txnid: $txnid)');
+      } else {
+        debugPrint('❌ [PAYU] FAILURE (txnid: $txnid)');
+      }
       ShowToastDialog.showToast('Payment failed or cancelled'.tr);
       controller.endOrderProcessing();
+      // Handle error gracefully
+      controller.handlePaymentError(
+        PaymentFailureResponse(0, 'PayU payment failed or cancelled', {}),
+      );
     }
   }
 

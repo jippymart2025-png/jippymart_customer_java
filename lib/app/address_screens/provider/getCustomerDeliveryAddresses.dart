@@ -10,7 +10,7 @@ Future<List<ShippingAddress>> getCustomerDeliveryAddresses({
 }) async {
   try {
     final uri = Uri.parse(
-      '${AppConst.outletBaseUrl}co/customers/getCustomerDeliveryAddresses',
+      '${AppConst.defaultBaseUrl}co/customers/getCustomerDeliveryAddresses',
     ).replace(queryParameters: {'customerId': customerId.toString()});
 
     final response = await http
@@ -37,10 +37,7 @@ Future<List<ShippingAddress>> getCustomerDeliveryAddresses({
       final item = list[i];
       if (item is! Map) continue;
       addresses.add(
-        _mapDeliveryAddress(
-          Map<String, dynamic>.from(item),
-          isDefault: i == 0,
-        ),
+        _mapDeliveryAddress(Map<String, dynamic>.from(item), isDefault: i == 0),
       );
     }
     return addresses;

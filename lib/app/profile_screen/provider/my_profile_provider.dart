@@ -177,7 +177,7 @@ class MyProfileProvider extends ChangeNotifier {
         log('[PROFILE_SCREEN] Making DELETE API call for user: $userId');
       }
       final response = await http.delete(
-        Uri.parse('${AppConst.outletBaseUrl}co/customers/$userId'),
+        Uri.parse('${AppConst.defaultBaseUrl}co/customers/$userId'),
         headers: await getHeaders(),
       );
       if (kDebugMode) {

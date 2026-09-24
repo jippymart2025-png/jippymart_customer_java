@@ -19,7 +19,7 @@ class GroupOrderApiService {
   }) async {
     try {
       final uri = Uri.parse(
-        '${AppConst.outletBaseUrl}co/group-orders/getGroupOrderInvitation',
+        '${AppConst.defaultBaseUrl}co/group-orders/getGroupOrderInvitation',
       ).replace(queryParameters: {'hostCustomerId': hostCustomerId.toString()});
 
       debugPrint('[GroupOrderApi] GET $uri');
@@ -69,7 +69,7 @@ class GroupOrderApiService {
     required int createdBy,
   }) async {
     final uri = Uri.parse(
-      '${AppConst.outletBaseUrl}co/group-orders/createGroupOrderInvitation',
+      '${AppConst.defaultBaseUrl}co/group-orders/createGroupOrderInvitation',
     );
 
     final body = {
@@ -143,7 +143,7 @@ class GroupOrderApiService {
   }) async {
     try {
       final uri = Uri.parse(
-        '${AppConst.outletBaseUrl}co/group-orders/joinGroupMembers',
+        '${AppConst.defaultBaseUrl}co/group-orders/joinGroupMembers',
       );
 
       final body = {
@@ -190,7 +190,7 @@ class GroupOrderApiService {
   }) async {
     try {
       final uri = Uri.parse(
-        '${AppConst.outletBaseUrl}co/group-orders/addItemsToGroupCart',
+        '${AppConst.defaultBaseUrl}co/group-orders/addItemsToGroupCart',
       );
 
       final body = {
@@ -234,7 +234,7 @@ class GroupOrderApiService {
     try {
       final uri =
           Uri.parse(
-            '${AppConst.outletBaseUrl}co/group-orders/groupOrderCheckOut',
+            '${AppConst.defaultBaseUrl}co/group-orders/groupOrderCheckOut',
           ).replace(
             queryParameters: {
               'groupOrdersInvitationId': groupOrdersInvitationId.toString(),

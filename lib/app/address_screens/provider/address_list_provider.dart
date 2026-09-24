@@ -308,7 +308,7 @@ class AddressListProvider extends ChangeNotifier {
       final headers = await getHeaders();
       final response = await http
           .get(
-            Uri.parse('${AppConst.outletBaseUrl}co/customers/$effectiveId'),
+            Uri.parse('${AppConst.defaultBaseUrl}co/customers/$effectiveId'),
             headers: headers,
           )
           .timeout(const Duration(seconds: 15)); // Reduced timeout
@@ -377,18 +377,21 @@ class AddressListProvider extends ChangeNotifier {
   static Map<String, dynamic> _processApiUserData(
     Map<String, dynamic> apiData,
   ) {
-    final id = apiData['id'] ??
+    final id =
+        apiData['id'] ??
         apiData['customerId'] ??
         apiData['customer_id'] ??
         apiData['userId'];
     final firstName =
         apiData['firstName'] ?? apiData['firstname'] ?? apiData['name'];
-    final phoneNumber = apiData['phoneNumber'] ??
+    final phoneNumber =
+        apiData['phoneNumber'] ??
         apiData['phonenumber'] ??
         apiData['mobile'] ??
         apiData['phone'];
     final email = apiData['email'] ?? apiData['mail'];
-    final profilePic = apiData['profilePictureURL'] ??
+    final profilePic =
+        apiData['profilePictureURL'] ??
         apiData['profilePicUrl'] ??
         apiData['profile_picture_url'] ??
         apiData['profilePicture'];
@@ -650,7 +653,7 @@ class AddressListProvider extends ChangeNotifier {
       debugPrint("Headers: $headers");
 
       final url =
-          '${AppConst.outletBaseUrl}co/customers/deleteCustomerDeliveryAddress?customerAddressId=$addressId';
+          '${AppConst.defaultBaseUrl}co/customers/deleteCustomerDeliveryAddress?customerAddressId=$addressId';
 
       debugPrint("DELETE URL: $url");
 

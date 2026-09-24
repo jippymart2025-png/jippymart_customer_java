@@ -15,7 +15,7 @@ Future<int?> saveCustomerDeliveryAddress({
 }) async {
   try {
     final uri = Uri.parse(
-      '${AppConst.outletBaseUrl}co/customers/saveCustomerDeliveryAddress',
+      '${AppConst.defaultBaseUrl}co/customers/saveCustomerDeliveryAddress',
     );
 
     final response = await http.post(
@@ -49,9 +49,8 @@ Future<int?> saveCustomerDeliveryAddress({
         ? Map<String, dynamic>.from(map['data'] as Map)
         : map;
 
-    final id = data['customerAddressId'] ??
-        data['deliveryAddressId'] ??
-        data['id'];
+    final id =
+        data['customerAddressId'] ?? data['deliveryAddressId'] ?? data['id'];
     if (id is num) return id.toInt();
     return int.tryParse(id?.toString() ?? '');
   } catch (e) {

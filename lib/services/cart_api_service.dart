@@ -11,7 +11,7 @@ import 'package:jippymart_customer/utils/utils/common.dart';
 class CartApiService {
   CartApiService._();
 
-  static String get _base => AppConst.outletBaseUrl;
+  static String get _base => AppConst.defaultBaseUrl;
 
   /// POST /co/cart/update
   static Future<bool> updateCart({
@@ -273,6 +273,39 @@ class CartApiService {
     } catch (e) {
       print('[CartApi] initiatePayment error: $e');
       rethrow;
+    }
+  }
+
+  /// GET /div/payment/getOrderPaymentStatus
+  ///
+  /// Gets the payment status of an order after payment completion.
+  static Future<Map<String, dynamic>?> getOrderPaymentStatus(
+    String orderId,
+  ) async {
+    try {
+      final uri = Uri.parse(
+        '${_base}div/payment/getOrderPaymentStatus?orderId=$orderId',
+      );
+
+      print('[CartApi] GET $uri');
+
+      final response = await http
+          .get(uri, headers: await getHeaders())
+          .timeout(const Duration(seconds: 20));
+
+      print('[CartApi] status: ${response.statusCode}');
+      print('[CartApi] response: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          return decoded;
+        }
+      }
+      return null;
+    } catch (e) {
+      print('[CartApi] getOrderPaymentStatus error: $e');
+      return null;
     }
   }
 }

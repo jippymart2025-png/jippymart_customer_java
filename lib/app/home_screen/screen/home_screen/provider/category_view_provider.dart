@@ -36,7 +36,7 @@ class CategoryViewProvider extends ChangeNotifier {
     try {
       final headers = await getHeaders();
       final url = Uri.parse(
-        '${AppConst.outletBaseUrl}fm/getHomeOrAllCategories?filter=HOME',
+        '${AppConst.defaultBaseUrl}fm/getHomeOrAllCategories?filter=HOME',
       );
       debugPrint('[CATEGORY_API] Fetching home categories from: $url');
       final response = await http

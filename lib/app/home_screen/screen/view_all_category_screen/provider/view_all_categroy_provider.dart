@@ -26,7 +26,7 @@ class ViewAllCategoryProvider extends ChangeNotifier {
     try {
       final headers = await getHeaders();
       final uri = Uri.parse(
-        '${AppConst.outletBaseUrl}fm/getHomeOrAllCategories?filter=ALL',
+        '${AppConst.defaultBaseUrl}fm/getHomeOrAllCategories?filter=ALL',
       );
       final response = await http
           .get(uri, headers: headers)

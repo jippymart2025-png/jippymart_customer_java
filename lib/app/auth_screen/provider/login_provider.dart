@@ -22,6 +22,7 @@ import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart'
     show SqlStorageConst;
 import 'package:jippymart_customer/utils/safe_http_client.dart';
+import 'package:jippymart_customer/utils/notification_service.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
 
@@ -105,7 +106,7 @@ class LoginProvider extends ChangeNotifier {
     ShowToastDialog.showLoader("Please wait".tr);
     try {
       phoneNumber = fullPhoneNumber;
-      final url = Uri.parse('${AppConst.outletBaseUrl}co/auth/send-otp');
+      final url = Uri.parse('${AppConst.defaultBaseUrl}co/auth/send-otp');
       final headers = await getHeaders();
       final httpResponse = await SafeHttpClient.safePost(
         url,
@@ -181,7 +182,7 @@ class LoginProvider extends ChangeNotifier {
         listen: false,
       );
 
-      final url = Uri.parse('${AppConst.outletBaseUrl}co/auth/verify-otp');
+      final url = Uri.parse('${AppConst.defaultBaseUrl}co/auth/verify-otp');
       final headers = await getHeaders();
       final httpResponse = await SafeHttpClient.safePost(
         url,
@@ -240,6 +241,12 @@ class LoginProvider extends ChangeNotifier {
     if (customerId != null && customerId.isNotEmpty) {
       await secureStorage.write(key: 'user_id', value: customerId);
     }
+
+    // ============================================================
+    // REGISTER FCM DEVICE TOKEN (fire & forget, non-blocking)
+    // ============================================================
+
+    unawaited(_registerDeviceToken(customerId));
 
     // ============================================================
     // GET USER DATA
@@ -302,6 +309,58 @@ class LoginProvider extends ChangeNotifier {
     isVerifying = false;
 
     notifyListeners();
+  }
+
+  /// Registers or updates the FCM device token on the backend
+  /// (POST /api/notification/device-token) after successful login.
+  Future<void> _registerDeviceToken(String? customerId) async {
+    try {
+      final id = int.tryParse(customerId ?? '');
+      if (id == null) return;
+
+      final fcmToken = await NotificationService.getToken();
+      if (fcmToken == null || fcmToken.isEmpty) {
+        print('[DEVICE_TOKEN] FCM token unavailable, skipping registration');
+        return;
+      }
+
+      final deviceType = Platform.isAndroid ? 'ANDROID' : 'IOS';
+
+      final url = Uri.parse(
+        'http://192.168.0.13:8084/api/notification/device-token',
+      );
+      final headers = await getHeaders();
+      final body = json.encode({
+        'userId': id,
+        'userType': Constant.userRoleCustomer.toUpperCase(),
+        'deviceType': deviceType,
+        'fcmToken': fcmToken,
+      });
+
+      final httpResponse = await SafeHttpClient.safePost(
+        url,
+        headers: headers,
+        body: body,
+        timeout: const Duration(seconds: 15),
+      );
+
+      if (httpResponse == null) {
+        throw const SocketException('No internet connection');
+      }
+
+      if (httpResponse.statusCode != 200) {
+        throw Exception(
+          'HTTP ${httpResponse.statusCode}: ${httpResponse.body}',
+        );
+      }
+
+      final response = json.decode(httpResponse.body) as Map<String, dynamic>;
+      print(
+        '[DEVICE_TOKEN] ${response['message'] ?? 'FCM token sent successfully'}',
+      );
+    } catch (e) {
+      print('[DEVICE_TOKEN] Error sending FCM token: $e');
+    }
   }
 
   Future<void> _handleRegisteredUser(
@@ -441,7 +500,7 @@ class LoginProvider extends ChangeNotifier {
 
     ShowToastDialog.showLoader("Resending OTP...".tr);
     try {
-      final url = Uri.parse('${AppConst.outletBaseUrl}co/auth/resend-otp');
+      final url = Uri.parse('${AppConst.defaultBaseUrl}co/auth/resend-otp');
       final headers = await getHeaders();
       final httpResponse = await SafeHttpClient.safePost(
         url,

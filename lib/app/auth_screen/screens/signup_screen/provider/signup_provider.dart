@@ -84,7 +84,7 @@ class SignupProvider extends ChangeNotifier {
       final headers = await getHeaders();
       final response = await http
           .put(
-            Uri.parse('${AppConst.outletBaseUrl}co/customers/$customerId'),
+            Uri.parse('${AppConst.defaultBaseUrl}co/customers/$customerId'),
             headers: headers,
             body: json.encode(profileData),
           )

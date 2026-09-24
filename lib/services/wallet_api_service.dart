@@ -245,7 +245,7 @@ class WalletApiService {
         return null;
       }
       final uri = Uri.parse(
-        '${AppConst.outletBaseUrl}co/customers/daily-streak/$customerId',
+        '${AppConst.defaultBaseUrl}co/customers/daily-streak/$customerId',
       ).replace(queryParameters: {'date': _todayDateParam()});
       final response = await http
           .post(uri, headers: await _headers())
