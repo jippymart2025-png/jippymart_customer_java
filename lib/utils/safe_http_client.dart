@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:jippymart_customer/services/network_connectivity_service.dart';
+import 'package:jippymart_customer/utils/production_logger.dart';
 
 /// Safe HTTP client that handles network errors gracefully
 class SafeHttpClient {
@@ -20,6 +20,10 @@ class SafeHttpClient {
         final connectivityService = NetworkConnectivityService();
         final isConnected = await connectivityService.checkConnectivity();
         if (!isConnected) {
+          ProductionLogger.error(
+            'SAFE_HTTP',
+            'Connectivity check failed for ${url.host}',
+          );
           if (throwOnError) {
             throw SocketException('No internet connection');
           }
@@ -39,33 +43,25 @@ class SafeHttpClient {
 
       return response;
     } on SocketException catch (e) {
-      if (kDebugMode) {
-        print('❌ [SAFE_HTTP] SocketException: ${e.message}');
-      }
+      ProductionLogger.error('SAFE_HTTP', 'SocketException: ${e.message}', e);
       if (throwOnError) {
         rethrow;
       }
       return null;
     } on TimeoutException catch (e) {
-      if (kDebugMode) {
-        print('❌ [SAFE_HTTP] TimeoutException: ${e.message}');
-      }
+      ProductionLogger.error('SAFE_HTTP', 'TimeoutException: ${e.message}', e);
       if (throwOnError) {
         rethrow;
       }
       return null;
     } on HttpException catch (e) {
-      if (kDebugMode) {
-        print('❌ [SAFE_HTTP] HttpException: ${e.message}');
-      }
+      ProductionLogger.error('SAFE_HTTP', 'HttpException: ${e.message}', e);
       if (throwOnError) {
         rethrow;
       }
       return null;
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ [SAFE_HTTP] Unexpected error: $e');
-      }
+      ProductionLogger.error('SAFE_HTTP', 'Unexpected error', e);
       if (throwOnError) {
         rethrow;
       }
@@ -88,6 +84,10 @@ class SafeHttpClient {
         final connectivityService = NetworkConnectivityService();
         final isConnected = await connectivityService.checkConnectivity();
         if (!isConnected) {
+          ProductionLogger.error(
+            'SAFE_HTTP',
+            'Connectivity check failed for ${url.host}',
+          );
           if (throwOnError) {
             throw SocketException('No internet connection');
           }
@@ -107,33 +107,25 @@ class SafeHttpClient {
 
       return response;
     } on SocketException catch (e) {
-      if (kDebugMode) {
-        print('❌ [SAFE_HTTP] SocketException: ${e.message}');
-      }
+      ProductionLogger.error('SAFE_HTTP', 'SocketException: ${e.message}', e);
       if (throwOnError) {
         rethrow;
       }
       return null;
     } on TimeoutException catch (e) {
-      if (kDebugMode) {
-        print('❌ [SAFE_HTTP] TimeoutException: ${e.message}');
-      }
+      ProductionLogger.error('SAFE_HTTP', 'TimeoutException: ${e.message}', e);
       if (throwOnError) {
         rethrow;
       }
       return null;
     } on HttpException catch (e) {
-      if (kDebugMode) {
-        print('❌ [SAFE_HTTP] HttpException: ${e.message}');
-      }
+      ProductionLogger.error('SAFE_HTTP', 'HttpException: ${e.message}', e);
       if (throwOnError) {
         rethrow;
       }
       return null;
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ [SAFE_HTTP] Unexpected error: $e');
-      }
+      ProductionLogger.error('SAFE_HTTP', 'Unexpected error', e);
       if (throwOnError) {
         rethrow;
       }
@@ -156,6 +148,10 @@ class SafeHttpClient {
         final connectivityService = NetworkConnectivityService();
         final isConnected = await connectivityService.checkConnectivity();
         if (!isConnected) {
+          ProductionLogger.error(
+            'SAFE_HTTP',
+            'Connectivity check failed for ${url.host}',
+          );
           if (throwOnError) {
             throw SocketException('No internet connection');
           }
@@ -175,33 +171,25 @@ class SafeHttpClient {
 
       return response;
     } on SocketException catch (e) {
-      if (kDebugMode) {
-        print('❌ [SAFE_HTTP] SocketException: ${e.message}');
-      }
+      ProductionLogger.error('SAFE_HTTP', 'SocketException: ${e.message}', e);
       if (throwOnError) {
         rethrow;
       }
       return null;
     } on TimeoutException catch (e) {
-      if (kDebugMode) {
-        print('❌ [SAFE_HTTP] TimeoutException: ${e.message}');
-      }
+      ProductionLogger.error('SAFE_HTTP', 'TimeoutException: ${e.message}', e);
       if (throwOnError) {
         rethrow;
       }
       return null;
     } on HttpException catch (e) {
-      if (kDebugMode) {
-        print('❌ [SAFE_HTTP] HttpException: ${e.message}');
-      }
+      ProductionLogger.error('SAFE_HTTP', 'HttpException: ${e.message}', e);
       if (throwOnError) {
         rethrow;
       }
       return null;
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ [SAFE_HTTP] Unexpected error: $e');
-      }
+      ProductionLogger.error('SAFE_HTTP', 'Unexpected error', e);
       if (throwOnError) {
         rethrow;
       }
@@ -224,6 +212,10 @@ class SafeHttpClient {
         final connectivityService = NetworkConnectivityService();
         final isConnected = await connectivityService.checkConnectivity();
         if (!isConnected) {
+          ProductionLogger.error(
+            'SAFE_HTTP',
+            'Connectivity check failed for ${url.host}',
+          );
           if (throwOnError) {
             throw SocketException('No internet connection');
           }
@@ -243,33 +235,25 @@ class SafeHttpClient {
 
       return response;
     } on SocketException catch (e) {
-      if (kDebugMode) {
-        print('❌ [SAFE_HTTP] SocketException: ${e.message}');
-      }
+      ProductionLogger.error('SAFE_HTTP', 'SocketException: ${e.message}', e);
       if (throwOnError) {
         rethrow;
       }
       return null;
     } on TimeoutException catch (e) {
-      if (kDebugMode) {
-        print('❌ [SAFE_HTTP] TimeoutException: ${e.message}');
-      }
+      ProductionLogger.error('SAFE_HTTP', 'TimeoutException: ${e.message}', e);
       if (throwOnError) {
         rethrow;
       }
       return null;
     } on HttpException catch (e) {
-      if (kDebugMode) {
-        print('❌ [SAFE_HTTP] HttpException: ${e.message}');
-      }
+      ProductionLogger.error('SAFE_HTTP', 'HttpException: ${e.message}', e);
       if (throwOnError) {
         rethrow;
       }
       return null;
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ [SAFE_HTTP] Unexpected error: $e');
-      }
+      ProductionLogger.error('SAFE_HTTP', 'Unexpected error', e);
       if (throwOnError) {
         rethrow;
       }

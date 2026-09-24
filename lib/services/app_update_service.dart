@@ -9,7 +9,6 @@ import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/utils/safe_http_client.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:jippymart_customer/app/dash_board_screens/dash_board_screen.dart';
 import 'package:jippymart_customer/app/auth_screen/phone_number_screen.dart';
 import 'dart:io';
@@ -557,8 +556,7 @@ class AppUpdateService {
       '[UPDATE DEBUG] Navigating to main app after update dialog dismissed',
     );
     // Check if user is logged in and navigate accordingly
-    const FlutterSecureStorage secureStorage = FlutterSecureStorage();
-    final apiToken = await secureStorage.read(key: 'api_token');
+    final apiToken = await SqlStorageConst.getAuthToken();
     final firebaseUser = await SqlStorageConst.getFirebaseId();
 
     if (apiToken != null && apiToken.isNotEmpty && firebaseUser != null) {

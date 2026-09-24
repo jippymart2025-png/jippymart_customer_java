@@ -5,6 +5,7 @@ import 'package:get_storage/get_storage.dart';
 import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
+import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:jippymart_customer/app/auth_screen/phone_number_screen.dart';
 import 'package:jippymart_customer/app/dash_board_screens/dash_board_screen.dart';
 import 'package:jippymart_customer/app/location_permission_screen/location_permission_screen.dart';
@@ -14,7 +15,6 @@ import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/services/app_update_service.dart';
 import 'package:jippymart_customer/services/final_deep_link_service.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 
@@ -313,15 +313,14 @@ class SplashProvider extends ChangeNotifier {
 
   Future<void> _loadUserDataFromStorage() async {
     try {
-      final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
-      final userId = await secureStorage.read(key: 'user_id');
-      final firebaseId = await secureStorage.read(key: 'firebase_id');
-      final firstName = await secureStorage.read(key: 'user_firstName') ?? '';
-      final lastName = await secureStorage.read(key: 'user_lastName') ?? '';
-      final email = await secureStorage.read(key: 'user_email') ?? '';
-      final phone = await secureStorage.read(key: 'user_phone') ?? '';
+      final userId = await readSecureStorage('user_id');
+      final firebaseId = await readSecureStorage('firebase_id');
+      final firstName = await readSecureStorage('user_firstName') ?? '';
+      final lastName = await readSecureStorage('user_lastName') ?? '';
+      final email = await readSecureStorage('user_email') ?? '';
+      final phone = await readSecureStorage('user_phone') ?? '';
       final countryCode =
-          await secureStorage.read(key: 'user_countryCode') ?? '+91';
+          await readSecureStorage('user_countryCode') ?? '+91';
       if (firebaseId != null) {
         UserModel userModel = UserModel(
           id: userId,

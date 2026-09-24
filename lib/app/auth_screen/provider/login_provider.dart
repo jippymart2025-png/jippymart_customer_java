@@ -16,13 +16,13 @@ import 'package:jippymart_customer/services/final_deep_link_service.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/user_model.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart'
     show SqlStorageConst;
 import 'package:jippymart_customer/utils/safe_http_client.dart';
 import 'package:jippymart_customer/utils/notification_service.dart';
+import 'package:jippymart_customer/utils/production_logger.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
 
@@ -48,9 +48,6 @@ class LoginProvider extends ChangeNotifier {
   Timer? _resendCountdownTimer;
   DateTime? _lastOtpRequestTime;
   static const Duration _otpCooldown = Duration(seconds: 30);
-
-  // Storage
-  final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
 
   void startResendTimer() {
     _resendCountdownTimer?.cancel();
@@ -108,6 +105,7 @@ class LoginProvider extends ChangeNotifier {
       phoneNumber = fullPhoneNumber;
       final url = Uri.parse('${AppConst.defaultBaseUrl}co/auth/send-otp');
       final headers = await getHeaders();
+      ProductionLogger.info('SEND_OTP', 'Sending OTP to ${url.toString()}');
       final httpResponse = await SafeHttpClient.safePost(
         url,
         headers: headers,
@@ -120,6 +118,10 @@ class LoginProvider extends ChangeNotifier {
       }
 
       if (httpResponse.statusCode != 200) {
+        ProductionLogger.error(
+          'SEND_OTP',
+          'HTTP ${httpResponse.statusCode}: ${httpResponse.body}',
+        );
         throw Exception(
           'HTTP ${httpResponse.statusCode}: ${httpResponse.body}',
         );
@@ -130,18 +132,24 @@ class LoginProvider extends ChangeNotifier {
       if (response['success'] == true) {
         isOtpSent = true;
         ShowToastDialog.closeLoader();
+        ProductionLogger.info('SEND_OTP', 'OTP sent: ${httpResponse.body}');
         ShowToastDialog.showToast(
           response['message']?.toString() ?? "OTP sent successfully".tr,
         );
         Get.to(() => OtpScreen());
       } else {
         ShowToastDialog.closeLoader();
+        ProductionLogger.error(
+          'SEND_OTP',
+          'OTP rejected: ${httpResponse.body}',
+        );
         ShowToastDialog.showToast(
           response['message']?.toString() ?? "Failed to send OTP".tr,
         );
       }
     } catch (e) {
       ShowToastDialog.closeLoader();
+      ProductionLogger.error('SEND_OTP', 'Error sending OTP', e);
       ShowToastDialog.showToast("Error sending OTP".tr);
     }
   }
@@ -239,7 +247,7 @@ class LoginProvider extends ChangeNotifier {
     final customerId = response['customerId']?.toString().trim();
 
     if (customerId != null && customerId.isNotEmpty) {
-      await secureStorage.write(key: 'user_id', value: customerId);
+      await writeSecureStorage('user_id', customerId);
     }
 
     // ============================================================
@@ -327,7 +335,7 @@ class LoginProvider extends ChangeNotifier {
       final deviceType = Platform.isAndroid ? 'ANDROID' : 'IOS';
 
       final url = Uri.parse(
-        'http://192.168.0.13:8084/api/notification/device-token',
+        'http://192.168.0.7:8084/api/notification/device-token',
       );
       final headers = await getHeaders();
       final body = json.encode({
@@ -543,18 +551,18 @@ class LoginProvider extends ChangeNotifier {
   // Load user data from local storage with cache
   Future<UserModel?> loadUserData() async {
     try {
-      final userId = await secureStorage.read(key: 'user_id');
+      final userId = await readSecureStorage('user_id');
       if (userId == null) return null;
 
       final storedCountryCode =
-          await secureStorage.read(key: 'user_countryCode') ?? '+91';
+          await readSecureStorage('user_countryCode') ?? '+91';
 
       return UserModel(
         id: userId,
-        firstName: await secureStorage.read(key: 'user_firstName') ?? '',
-        lastName: await secureStorage.read(key: 'user_lastName') ?? '',
-        email: await secureStorage.read(key: 'user_email') ?? '',
-        phoneNumber: await secureStorage.read(key: 'user_phone') ?? '',
+        firstName: await readSecureStorage('user_firstName') ?? '',
+        lastName: await readSecureStorage('user_lastName') ?? '',
+        email: await readSecureStorage('user_email') ?? '',
+        phoneNumber: await readSecureStorage('user_phone') ?? '',
         countryCode: storedCountryCode,
         role: Constant.userRoleCustomer,
         active: true,
@@ -573,12 +581,12 @@ class LoginProvider extends ChangeNotifier {
     // Batch delete storage keys
     await Future.wait([
       clearAuthToken(),
-      secureStorage.delete(key: 'user_id'),
-      secureStorage.delete(key: 'user_firstName'),
-      secureStorage.delete(key: 'user_lastName'),
-      secureStorage.delete(key: 'user_email'),
-      secureStorage.delete(key: 'user_phone'),
-      secureStorage.delete(key: 'user_countryCode'),
+      deleteSecureStorage('user_id'),
+      deleteSecureStorage('user_firstName'),
+      deleteSecureStorage('user_lastName'),
+      deleteSecureStorage('user_email'),
+      deleteSecureStorage('user_phone'),
+      deleteSecureStorage('user_countryCode'),
     ]);
 
     phoneEditingController.clear();

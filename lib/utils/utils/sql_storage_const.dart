@@ -1,36 +1,30 @@
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:jippymart_customer/models/user_model.dart';
+import 'package:jippymart_customer/utils/utils/common.dart';
 
 class SqlStorageConst {
   static UserModel userModel = UserModel();
 
   static Future<bool> isUserLoggedIn() async {
-    final storage = FlutterSecureStorage();
-    final token = await storage.read(key: 'api_token');
+    final token = await readSecureStorage('api_token');
     return token != null;
   }
 
   static Future<String?> getAuthToken() async {
-    final storage = FlutterSecureStorage();
-    return await storage.read(key: 'api_token');
+    return await readSecureStorage('api_token');
   }
 
   static Future<String?> getFirebaseId() async {
-    final storage = FlutterSecureStorage();
-    return await storage.read(key: 'firebase_id');
+    return await readSecureStorage('firebase_id');
   }
 
   /// Backend user id (e.g. user_26c52283-...) used by firestore/orders API.
   static Future<String?> getUserId() async {
-    final storage = FlutterSecureStorage();
-    return await storage.read(key: 'user_id');
+    return await readSecureStorage('user_id');
   }
 
   static Future<String?> getUserName() async {
-    final storage = FlutterSecureStorage();
-
-    final firstName = await storage.read(key: 'user_firstName');
-    final lastName = await storage.read(key: 'user_lastName');
+    final firstName = await readSecureStorage('user_firstName');
+    final lastName = await readSecureStorage('user_lastName');
 
     if (firstName == null && lastName == null) return null;
 
@@ -42,17 +36,15 @@ class SqlStorageConst {
     UserModel user, {
     String? countryCode,
   }) async {
-    final storage = FlutterSecureStorage();
-
     // Read existing values so required fields (firstName/email/phoneNumber)
     // are never clobbered with empty/null data.
-    final existingId = await storage.read(key: 'user_id');
-    final existingFirstName = await storage.read(key: 'user_firstName');
-    final existingLastName = await storage.read(key: 'user_lastName');
-    final existingEmail = await storage.read(key: 'user_email');
-    final existingPhone = await storage.read(key: 'user_phone');
-    final existingCountryCode = await storage.read(key: 'user_countryCode');
-    final existingProfilePic = await storage.read(key: 'user_profilePicUrl');
+    final existingId = await readSecureStorage('user_id');
+    final existingFirstName = await readSecureStorage('user_firstName');
+    final existingLastName = await readSecureStorage('user_lastName');
+    final existingEmail = await readSecureStorage('user_email');
+    final existingPhone = await readSecureStorage('user_phone');
+    final existingCountryCode = await readSecureStorage('user_countryCode');
+    final existingProfilePic = await readSecureStorage('user_profilePicUrl');
 
     final storedId = user.id ?? existingId;
     final storedFirstName = _valueOr(user.firstName, existingFirstName);
@@ -66,17 +58,17 @@ class SqlStorageConst {
       return;
     }
 
-    await storage.write(key: 'user_id', value: storedId);
-    await storage.write(key: 'firebase_id', value: user.firebaseId);
-    await storage.write(key: 'user_firstName', value: storedFirstName);
-    await storage.write(key: 'user_lastName', value: storedLastName);
-    await storage.write(key: 'user_email', value: storedEmail);
-    await storage.write(key: 'user_phone', value: storedPhone);
-    await storage.write(
-      key: 'user_countryCode',
-      value: countryCode ?? user.countryCode ?? existingCountryCode,
+    await writeSecureStorage('user_id', storedId);
+    await writeSecureStorage('firebase_id', user.firebaseId);
+    await writeSecureStorage('user_firstName', storedFirstName);
+    await writeSecureStorage('user_lastName', storedLastName);
+    await writeSecureStorage('user_email', storedEmail);
+    await writeSecureStorage('user_phone', storedPhone);
+    await writeSecureStorage(
+      'user_countryCode',
+      countryCode ?? user.countryCode ?? existingCountryCode,
     );
-    await storage.write(key: 'user_profilePicUrl', value: storedProfilePic);
+    await writeSecureStorage('user_profilePicUrl', storedProfilePic);
   }
 
   static String? _valueOr(String? value, String? fallback) {
@@ -89,15 +81,14 @@ class SqlStorageConst {
   /// (id, name, email, phone, etc.) without making a network call.
   static Future<UserModel?> getUserModelFromCache() async {
     try {
-      final storage = FlutterSecureStorage();
-      final id = await storage.read(key: 'user_id');
-      final firebaseId = await storage.read(key: 'firebase_id');
-      final firstName = await storage.read(key: 'user_firstName');
-      final lastName = await storage.read(key: 'user_lastName');
-      final email = await storage.read(key: 'user_email');
-      final phone = await storage.read(key: 'user_phone');
-      final countryCode = await storage.read(key: 'user_countryCode');
-      final profilePic = await storage.read(key: 'user_profilePicUrl');
+      final id = await readSecureStorage('user_id');
+      final firebaseId = await readSecureStorage('firebase_id');
+      final firstName = await readSecureStorage('user_firstName');
+      final lastName = await readSecureStorage('user_lastName');
+      final email = await readSecureStorage('user_email');
+      final phone = await readSecureStorage('user_phone');
+      final countryCode = await readSecureStorage('user_countryCode');
+      final profilePic = await readSecureStorage('user_profilePicUrl');
 
       if ((id == null || id.isEmpty) &&
           (firebaseId == null || firebaseId.isEmpty) &&

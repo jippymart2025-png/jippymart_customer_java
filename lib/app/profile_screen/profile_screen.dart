@@ -20,7 +20,7 @@ import 'package:get/get.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../edit_profile_screen/provider/edit_profile_provider.dart'
     show EditProfileProvider;
@@ -614,8 +614,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             loginProvider.authToken = '';
           } catch (_) {}
           await Preferences.clearSharPreference();
-          const FlutterSecureStorage secureStorage = FlutterSecureStorage();
-          await secureStorage.delete(key: 'api_token');
+          await deleteSecureStorage('api_token');
           try {
             // await DatabaseHelper.instance.deleteAllCartProducts();
             CartControllerProvider cartControllerProvider =

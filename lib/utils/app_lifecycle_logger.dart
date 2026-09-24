@@ -4,7 +4,6 @@ import 'package:jippymart_customer/utils/preferences.dart';
 import 'package:jippymart_customer/utils/production_logger.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 
 class AppLifecycleLogger extends WidgetsBindingObserver {
@@ -14,7 +13,6 @@ class AppLifecycleLogger extends WidgetsBindingObserver {
 
   AppLifecycleLogger._internal();
 
-  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
   DateTime? _lastResumeTime;
   DateTime? _lastPauseTime;
   int _appOpenCount = 0;
@@ -96,7 +94,7 @@ class AppLifecycleLogger extends WidgetsBindingObserver {
     try {
       final user = await SqlStorageConst.getFirebaseId();
 
-      final apiToken = await _secureStorage.read(key: 'api_token');
+      final apiToken = await SqlStorageConst.getAuthToken();
       final isOtpVerified = Preferences.getBoolean('isOtpVerified');
 
       final authStatus = {
