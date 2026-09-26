@@ -526,10 +526,17 @@ class _PaymentMethodsCard extends StatelessWidget {
 
   final CartControllerProvider controller;
 
-  bool get _amountWithinCodMax => controller.useWalletBalance
-      ? controller.amountToChargeViaGateway <=
-            controller.codMaxAmountForCurrentZone
-      : controller.subTotal <= controller.codMaxAmountForCurrentZone;
+  /// True when the order is within the COD cap the backend actually supplied.
+  /// Returns true when no cap is known: [codMaxAmountForCurrentZone] falls back
+  /// to a 599 display placeholder, and enforcing that guess would disable COD
+  /// for orders the server had approved.
+  bool get _amountWithinCodMax {
+    final cap = controller.codMaxAmountForCurrentZoneOrNull;
+    if (cap == null) return true;
+    return controller.useWalletBalance
+        ? controller.amountToChargeViaGateway <= cap
+        : controller.subTotal <= cap;
+  }
 
   /// True when the server checkout response is available, making its
   /// per-order `codAvailable` the source of truth for COD.

@@ -99,10 +99,23 @@ class CustomerCheckoutModel {
       couponDiscount: _toDouble(json['couponDiscount']),
       deliveryTip: _toDouble(json['deliveryTip']),
       toPay: _toDouble(json['toPay']),
-      codAvailable: json['codAvailable'] == true,
+      codAvailable: _toBoolLoose(json['codAvailable'], fallback: true),
       message: json['message']?.toString(),
     );
   }
+}
+
+/// Accepts the several shapes a flag can arrive in (`true`, `"true"`, `"Y"`,
+/// `1`) and avoids the silent `false` that a strict `== true` produced.
+///
+/// [fallback] is used only when the key is absent entirely.
+bool _toBoolLoose(dynamic value, {required bool fallback}) {
+  if (value == null) return fallback;
+  if (value is bool) return value;
+  if (value is num) return value != 0;
+  final text = value.toString().trim().toLowerCase();
+  if (text.isEmpty) return fallback;
+  return text == 'true' || text == '1' || text == 'y' || text == 'yes';
 }
 
 double _toDouble(dynamic value) {

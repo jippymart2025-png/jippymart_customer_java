@@ -863,12 +863,45 @@ class CartControllerProvider extends ChangeNotifier {
     return _parseFlexibleBool(zoneConfig[key]);
   }
 
-  bool get isCodEnabledForCurrentZone =>
-      _readZonePaymentFlag('cod') ??
-      (cashOnDeliverySettingModel.isEnabled == true);
+  /// Whether COD is switched on for the zone the user is ordering in.
+  ///
+  /// Resolution order, most specific first:
+  ///   1. per-zone `cod` flag from [Preferences.zonePaymentSettings],
+  ///   2. the global COD settings blob from [Preferences.codSettings],
+  ///   3. GET `co/order-settings/getActivePaymentModes` — the only backend
+  ///      source the app actually fetches today.
+  ///
+  /// Steps 1 and 2 are legacy Firestore-era caches that nothing in the codebase
+  /// writes any more, so `CodSettingModel.isEnabled` stayed `null` and this
+  /// getter returned `false` for every zone. That made _processCODOrder abort
+  /// with "Cash on Delivery is not available in your zone" even though COD was
+  /// active server-side and `POST /co/checkout` had returned `codAvailable:
+  /// true`. Falling through to the active-payment-modes API is what makes the
+  /// zone check agree with the rest of the flow.
+  bool get isCodEnabledForCurrentZone {
+    final zoneFlag = _readZonePaymentFlag('cod');
+    if (zoneFlag != null) return zoneFlag;
 
-  bool get isRazorpayEnabledForCurrentZone =>
-      _readZonePaymentFlag('razorpay') ?? (razorPayModel.isEnabled == true);
+    final cached = cashOnDeliverySettingModel.isEnabled;
+    if (cached != null) return cached == true;
+
+    if (_isActivePaymentModesLoaded) {
+      return _isPaymentModeActive('COD');
+    }
+
+    // Settings are still in flight. Do not fail a legitimate COD order on a
+    // startup race; the backend remains the real authority at order creation.
+    return true;
+  }
+
+  bool get isRazorpayEnabledForCurrentZone {
+    final zoneFlag = _readZonePaymentFlag('razorpay');
+    if (zoneFlag != null) return zoneFlag;
+    final cached = razorPayModel.isEnabled;
+    if (cached != null) return cached == true;
+    if (_isActivePaymentModesLoaded) return _isPaymentModeActive('RAZOR_PAY');
+    return true;
+  }
 
   double get codMaxAmountForCurrentZone {
     final zoneId = currentPaymentZoneId;
@@ -882,6 +915,26 @@ class CartControllerProvider extends ChangeNotifier {
       }
     }
     return cashOnDeliverySettingModel.getMaxAmount();
+  }
+
+  /// Same lookup as [codMaxAmountForCurrentZone] but returns null when the app
+  /// has no real backend cap, instead of the 599 display placeholder.
+  ///
+  /// Both legacy caches this reads are never written by the current code, so the
+  /// 599 default was the only value available and it is a guess, not a limit
+  /// the business configured. Business rules must not be enforced on a guess.
+  double? get codMaxAmountForCurrentZoneOrNull {
+    final zoneId = currentPaymentZoneId;
+    if (zoneId != null && zoneId.isNotEmpty) {
+      final zoneConfig = _zonePaymentSettings[zoneId];
+      if (zoneConfig is Map) {
+        final parsed = _parseFlexibleDouble(zoneConfig['maxAmount']);
+        if (parsed != null && parsed > 0) return parsed;
+      }
+    }
+    final configured = cashOnDeliverySettingModel.maxAmount;
+    if (configured != null && configured > 0) return configured;
+    return null;
   }
 
   /// Sets [useWalletBalance]. When turning on, clears coupon and recalculates (no change to other price logic).
@@ -3059,8 +3112,24 @@ class CartControllerProvider extends ChangeNotifier {
 
   Future<void> _processCODOrder() async {
     try {
-      // Validate COD availability
-      if (!isCodEnabledForCurrentZone || !isCodActiveFromApi) {
+      // Validate COD availability.
+      //
+      // Gate on the same getter the payment tiles and the 1s COD guard timer
+      // use, so a COD order can never be offered by the UI and then rejected
+      // on submit. Previously this checked isCodEnabledForCurrentZone /
+      // isCodActiveFromApi directly, which disagreed with the UI: /co/checkout
+      // returned codAvailable:true (tile enabled) while the legacy, never
+      // populated zone cache said false, so every COD submit died with
+      // "Cash on Delivery is not available in your zone".
+      debugPrint(
+        '[COD] availableForOrder=$isCodAvailableForCurrentOrder '
+        'zoneEnabled=$isCodEnabledForCurrentZone '
+        'activeFromApi=$isCodActiveFromApi '
+        'checkoutCod=$checkoutCodAvailable '
+        'maxAmount=$codMaxAmountForCurrentZone '
+        'promotionalItems=${hasPromotionalItems()}',
+      );
+      if (!isCodAvailableForCurrentOrder) {
         ShowToastDialog.showToast(
           "Cash on Delivery is not available in your zone. Please select another payment method."
               .tr,
@@ -3069,25 +3138,26 @@ class CartControllerProvider extends ChangeNotifier {
         return;
       }
 
-      if (!checkoutCodAvailable) {
-        ShowToastDialog.showToast(
-          "Cash on Delivery is temporarily unavailable for this order. Please select another payment method."
-              .tr,
-        );
-        endOrderProcessing();
-        return;
-      }
+      // `checkoutCodAvailable` is already folded into isCodAvailableForCurrentOrder
+      // above (and defaults to true when no checkout response exists yet), so a
+      // second gate here could never fire.
 
-      final codAmountCheck = useWalletBalance
-          ? amountToChargeViaGateway
-          : totalAmount;
-      if (codAmountCheck > codMaxAmountForCurrentZone) {
-        ShowToastDialog.showToast(
-          "Cash on Delivery is not available for orders above ₹${codMaxAmountForCurrentZone.toStringAsFixed(0)}. Please select another payment method."
-              .tr,
-        );
-        endOrderProcessing();
-        return;
+      // Only enforce the cap when the backend actually supplied one.
+      // [codMaxAmountForCurrentZone] falls back to 599 purely for display, and
+      // enforcing that placeholder would reject orders the server had allowed.
+      final codCap = codMaxAmountForCurrentZoneOrNull;
+      if (codCap != null) {
+        final codAmountCheck = useWalletBalance
+            ? amountToChargeViaGateway
+            : totalAmount;
+        if (codAmountCheck > codCap) {
+          ShowToastDialog.showToast(
+            "Cash on Delivery is not available for orders above ₹${codCap.toStringAsFixed(0)}. Please select another payment method."
+                .tr,
+          );
+          endOrderProcessing();
+          return;
+        }
       }
 
       if (hasPromotionalItems()) {
@@ -6996,7 +7066,8 @@ class CartControllerProvider extends ChangeNotifier {
             ? PaymentGateway.razorpay.name
             : '';
       }
-    } else if (codAmountCheck > codMaxAmountForCurrentZone) {
+    } else if (codMaxAmountForCurrentZoneOrNull != null &&
+        codAmountCheck > codMaxAmountForCurrentZoneOrNull!) {
       if (selectedPaymentMethod == PaymentGateway.cod.name ||
           selectedPaymentMethod.isEmpty) {
         selectedPaymentMethod = canUseOnline
@@ -7328,8 +7399,9 @@ class CartControllerProvider extends ChangeNotifier {
                   SizedBox(height: 10),
 
                   // Validation messages (use remaining amount when wallet is used)
-                  if ((useWalletBalance ? amountToChargeViaGateway : subTotal) >
-                          codMaxAmountForCurrentZone &&
+                  if (codMaxAmountForCurrentZoneOrNull != null &&
+                      (useWalletBalance ? amountToChargeViaGateway : subTotal) >
+                          codMaxAmountForCurrentZoneOrNull! &&
                       selectedPaymentMethod == PaymentGateway.cod.name)
                     Container(
                       padding: EdgeInsets.all(8),
@@ -7407,9 +7479,10 @@ class CartControllerProvider extends ChangeNotifier {
                       final codCheck = useWalletBalance
                           ? amountToChargeViaGateway
                           : subTotal;
-                      if (codCheck > codMaxAmountForCurrentZone) {
+                      final codCap = codMaxAmountForCurrentZoneOrNull;
+                      if (codCap != null && codCheck > codCap) {
                         ShowToastDialog.showToast(
-                          "COD not available for orders above ₹${codMaxAmountForCurrentZone.toStringAsFixed(0)}. Please select online payment."
+                          "COD not available for orders above ₹${codCap.toStringAsFixed(0)}. Please select online payment."
                               .tr,
                         );
                         return;
@@ -7891,7 +7964,31 @@ class CartControllerProvider extends ChangeNotifier {
       // POST /div/payment/initiate twice in a row.
       final isPayUSelected =
           controller.selectedPaymentMethod == PaymentGateway.payu.name;
-      if (!isPayUSelected) {
+      final isCodSelected =
+          controller.selectedPaymentMethod == PaymentGateway.cod.name;
+
+      if (isCodSelected) {
+        // This call *creates* the COD order, so it has to be fresh.
+        // initiatePaymentIfNeeded() short-circuits on an unchanged cart/config
+        // and returns the reference from the previous attempt, which would send
+        // the user to a confirmation screen for an order that was never placed
+        // (or was already abandoned).
+        final response = await controller.forcePaymentInitiate();
+        final orderId = controller.initiatePaymentId;
+        if (response == null || orderId == null || orderId.isEmpty) {
+          debugPrint(
+            '❌ [PROCESS_PAYMENT] COD initiate returned no order id',
+          );
+          ShowToastDialog.showToast(
+            "Your order could not be created. Please try again.".tr,
+          );
+          controller.endOrderProcessing();
+          return;
+        }
+        debugPrint(
+          '✅ [PROCESS_PAYMENT] COD order created by initiate: $orderId',
+        );
+      } else if (!isPayUSelected) {
         final initiated = await controller.initiatePaymentIfNeeded();
         if (!initiated) {
           controller.endOrderProcessing();
@@ -9207,75 +9304,116 @@ class CartControllerProvider extends ChangeNotifier {
         // Continue with order placement even if loader fails
       }
 
-      // 🔑 OPTIMIZATION: Prepare headers and body in parallel before API call
-      final headersFuture = getHeaders();
-      final bodyJson = json.encode(orderPayload);
-      final headers = await headersFuture;
+      String? createdOrderId;
 
-      // 🔑 OPTIMIZATION: Make API call with optimized timeout (works in background)
-      // http package works in background, so this will execute even if app is backgrounded
-      final response = await http
-          .post(
-            Uri.parse('${AppConst.baseUrl}mobile/orders'),
-            headers: headers,
-            body: bodyJson,
-          )
-          .timeout(
-            const Duration(seconds: 20),
-            // 🔑 OPTIMIZATION: Reduced timeout for faster failure detection
-            onTimeout: () {
-              throw Exception(
-                'Order creation API call timed out after 20 seconds',
-              );
-            },
-          );
+      // COD orders are created by POST /div/payment/initiate, which is called
+      // earlier from processPayment and already receives the complete order
+      // payload — outlet, customer, address, every item with prices, the totals
+      // and `paymentModeId`. Its response carries the created order's id, so
+      // posting to /mobile/orders afterwards created a second, duplicate order
+      // and, because that endpoint returns a flat `success: null` DTO, usually
+      // left the user stuck on the payment screen instead.
+      final isCodOrder = selectedPaymentMethod == PaymentGateway.cod.name;
 
-      debugPrint(
-        '🌐 [ORDER_CREATION] API response status: ${response.statusCode}',
-      );
-
-      final responseData = json.decode(response.body);
-
-      debugPrint('🌐 [ORDER_CREATION] Raw response: ${response.body}');
-
-      // The backend is not consistent about the envelope: some deployments
-      // return {success:true, data:{order_id}}, others return a flat
-      // {orderId, success:null} DTO. Deciding on `success` alone therefore
-      // aborted COD orders that the server had in fact accepted, leaving the
-      // user on the payment screen forever.
-      //
-      // The presence of an order id is the authoritative signal.
-      final createdOrderId = _extractOrderIdFromResponse(responseData);
-      final explicitlyFailed = responseData['success'] == false;
-
-      if (explicitlyFailed && createdOrderId == null) {
-        final backendMessage =
-            responseData['message']?.toString() ??
-            responseData['errorMessage']?.toString() ??
-            'Unable to place your order';
-
-        debugPrint('❌ [ORDER_CREATION] API returned error: $backendMessage');
-
-        try {
-          ShowToastDialog.closeLoader();
-        } catch (_) {}
-
-        endOrderProcessing();
-
-        ShowToastDialog.showToast(backendMessage.tr);
-
-        _isOrderBeingCreated = false;
-        _isOrderCreationInProgress = false;
-        _currentOrderPaymentId = null;
-
-        return;
-      }
-
-      if (createdOrderId == null) {
+      if (isCodOrder) {
+        createdOrderId = _lastInitiatePaymentId;
         debugPrint(
-          '❌ [ORDER_CREATION] Could not find an order id in the response',
+          '✅ [ORDER_CREATION] COD order created by /div/payment/initiate '
+          'with ID: $createdOrderId',
         );
-        throw Exception('API response missing order_id');
+
+        if (createdOrderId == null || createdOrderId!.isEmpty) {
+          // The initiate call reported success but carried no order id, so we
+          // have no way to confirm or display the order. Surface it instead of
+          // navigating to a confirmation screen with a blank order number.
+          final backendMessage =
+              'Your order could not be created. Please try again.'.tr;
+          debugPrint('❌ [ORDER_CREATION] $backendMessage');
+
+          try {
+            ShowToastDialog.closeLoader();
+          } catch (_) {}
+
+          endOrderProcessing();
+          ShowToastDialog.showToast(backendMessage);
+
+          _isOrderBeingCreated = false;
+          _isOrderCreationInProgress = false;
+          _currentOrderPaymentId = null;
+
+          return;
+        }
+      } else {
+        // 🔑 OPTIMIZATION: Prepare headers and body in parallel before API call
+        final headersFuture = getHeaders();
+        final bodyJson = json.encode(orderPayload);
+        final headers = await headersFuture;
+
+        // 🔑 OPTIMIZATION: Make API call with optimized timeout (works in background)
+        // http package works in background, so this will execute even if app is backgrounded
+        final response = await http
+            .post(
+              Uri.parse('${AppConst.baseUrl}mobile/orders'),
+              headers: headers,
+              body: bodyJson,
+            )
+            .timeout(
+              const Duration(seconds: 20),
+              // 🔑 OPTIMIZATION: Reduced timeout for faster failure detection
+              onTimeout: () {
+                throw Exception(
+                  'Order creation API call timed out after 20 seconds',
+                );
+              },
+            );
+
+        debugPrint(
+          '🌐 [ORDER_CREATION] API response status: ${response.statusCode}',
+        );
+
+        final responseData = json.decode(response.body);
+
+        debugPrint('🌐 [ORDER_CREATION] Raw response: ${response.body}');
+
+        // The backend is not consistent about the envelope: some deployments
+        // return {success:true, data:{order_id}}, others return a flat
+        // {orderId, success:null} DTO. Deciding on `success` alone therefore
+        // aborted orders that the server had in fact accepted, leaving the
+        // user on the payment screen forever.
+        //
+        // The presence of an order id is the authoritative signal.
+        createdOrderId = _extractOrderIdFromResponse(responseData);
+        final explicitlyFailed = responseData['success'] == false;
+
+        if (explicitlyFailed && createdOrderId == null) {
+          final backendMessage =
+              responseData['message']?.toString() ??
+              responseData['errorMessage']?.toString() ??
+              'Unable to place your order';
+
+          debugPrint('❌ [ORDER_CREATION] API returned error: $backendMessage');
+
+          try {
+            ShowToastDialog.closeLoader();
+          } catch (_) {}
+
+          endOrderProcessing();
+
+          ShowToastDialog.showToast(backendMessage.tr);
+
+          _isOrderBeingCreated = false;
+          _isOrderCreationInProgress = false;
+          _currentOrderPaymentId = null;
+
+          return;
+        }
+
+        if (createdOrderId == null) {
+          debugPrint(
+            '❌ [ORDER_CREATION] Could not find an order id in the response',
+          );
+          throw Exception('API response missing order_id');
+        }
       }
 
       orderModel.id = createdOrderId;
