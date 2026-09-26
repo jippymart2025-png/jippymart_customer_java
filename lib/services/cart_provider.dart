@@ -6,7 +6,6 @@ import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
-import 'package:jippymart_customer/services/database_helper.dart';
 import 'package:jippymart_customer/themes/custom_dialog_box.dart';
 import 'package:jippymart_customer/app/auth_screen/phone_number_screen.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
@@ -45,12 +44,10 @@ class CartProvider with ChangeNotifier {
   DateTime? _lastLocationSaveTime;
 
   Stream<List<CartProductModel>> get cartStream => _cartStreamController.stream;
+
   int get totalQuantity => _totalQuantity;
 
-  int quantityFor({
-    required String vendorId,
-    required String productId,
-  }) {
+  int quantityFor({required String vendorId, required String productId}) {
     if (vendorId.isEmpty || productId.isEmpty) return 0;
     return _quantityByVendorAndProduct['$vendorId|$productId'] ?? 0;
   }
@@ -463,9 +460,9 @@ class CartProvider with ChangeNotifier {
               : "Mart items in cart".tr,
           descriptions: isAddingMartItem
               ? "You have food items in your cart. Do you want to replace them with items from the mart?"
-                  .tr
+                    .tr
               : "You have mart items in your cart. Do you want to replace them with food from this restaurant?"
-                  .tr,
+                    .tr,
           positiveString: "Replace".tr,
           negativeString: "Cancel".tr,
           positiveClick: () async {

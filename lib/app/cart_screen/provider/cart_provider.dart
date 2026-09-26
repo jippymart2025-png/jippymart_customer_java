@@ -12,7 +12,6 @@ import 'package:jippymart_customer/app/cart_screen/screens/order_placing_screen/
 import 'package:jippymart_customer/app/cart_screen/screens/order_placing_screen/provider/order_placing_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/wallet_screen/provider/wallet_provider.dart';
-import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/send_notification.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
@@ -57,9 +56,7 @@ import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import '../../../models/DeliveryCharge.dart';
-import '../../../models/mart_item_model.dart';
 import '../../address_screens/screens/address_list_screen.dart';
-import '../cart_screen.dart';
 
 /// Price update result for cart price validation
 enum PriceStatus { noChange, priceChanged, productNotFound, error }
@@ -111,27 +108,20 @@ class CartControllerProvider extends ChangeNotifier {
   Timer? _codGuardTimer;
   StreamSubscription<List<CartProductModel>>? _cartStreamSubscription;
   bool _isBatchUpdateScheduled = false;
-  bool _orderInProgress = false;
 
   // Add these fields to the class variables section:
-  bool _isGlobalLocked = false;
   bool isProfileValid = false;
   bool isProfileValidating = false;
   List<Function()> _pendingUpdates = [];
 
   // 🔑 SMART SYNC FIELDS
   final Set<String> _recentlySyncedItems = {};
-  final Set<String> _itemsPendingSync = {};
-  static const Duration _syncCooldown = Duration(minutes: 5);
 
   // 🔑 MEMORY MANAGEMENT
-  final List<String> _recentlyUpdatedProductIds = [];
-  static const int _maxRecentUpdates = 50;
   static const int _maxProcessedPaymentIds = 100;
 
   // 🔑 UI STATE MANAGEMENT
   bool _isCalculatingPrice = false;
-  DateTime? _lastPriceCalculationTime;
 
   // 🔑 PAYMENT STATE
   bool isPaymentInProgress = false;
@@ -198,11 +188,8 @@ class CartControllerProvider extends ChangeNotifier {
 
   // 🔑 CACHING
   VendorModel? _cachedVendorModel;
-  DeliveryCharge? _cachedDeliveryCharge;
   List<CouponModel>? _cachedCouponList;
-  List<CouponModel>? _cachedGlobalCouponList;
   DateTime? _lastCacheTime;
-  DateTime? _lastGlobalCouponCacheTime;
   static const Duration cacheExpiry = Duration(minutes: 5);
   static const Duration globalCouponCacheExpiry = Duration(minutes: 5);
 
@@ -215,10 +202,7 @@ class CartControllerProvider extends ChangeNotifier {
   final Map<String, Map<String, dynamic>> _promotionalCalculationCache = {};
   final Map<String, double> _cachedFreeDeliveryKm = {};
   final Map<String, double> _cachedExtraKmCharge = {};
-  final Map<String, double> _cachedPromotionalBaseCharge =
-      {}; // 🔑 NEW: Cache for promotional base charge
   List<TaxModel>? _cachedTaxList;
-  bool _calculationCacheLoaded = false;
 
   // 🔑 PERFORMANCE: Cache cart item type checks to avoid repeated iterations
   bool? _cachedHasPromotionalItems;
@@ -228,20 +212,10 @@ class CartControllerProvider extends ChangeNotifier {
   String? _lastObservedProductSetHash;
 
   // 🔑 OPTIMIZATION: Cache distance calculation to avoid repeated calculations
-  double? _cachedDistance;
-  double? _cachedCustomerLat;
-  double? _cachedCustomerLng;
-  double? _cachedVendorLat;
-  double? _cachedVendorLng;
 
   // 🔑 COUPON LOADING
   bool _isLoadingCoupons = false;
   String _currentContext = "restaurant";
-  Future<void>? _couponLoadInFlight;
-  Future<void>? _markUsedCouponsInFlight;
-  DateTime? _lastUsedCouponsFetchAt;
-  static const Duration _usedCouponsCacheExpiry = Duration(minutes: 2);
-  Set<String> _cachedUsedCouponIds = <String>{};
 
   // 🔑 RAZORPAY
   final RazorpayCrashPrevention _razorpayCrashPrevention =
@@ -278,6 +252,7 @@ class CartControllerProvider extends ChangeNotifier {
       debugPrint('⚠️ [ORDER_CREATION] Could not seed OrderPlacingProvider: $e');
     }
   }
+
   final CartProvider cartProvider = CartProvider();
   TextEditingController reMarkController = TextEditingController();
   Map<String, dynamic>? _martDeliverySettings;
@@ -338,7 +313,6 @@ class CartControllerProvider extends ChangeNotifier {
 
   /// Payment/transaction reference from POST /div/payment/initiate.
   String? _lastInitiatePaymentId;
-  Map<String, dynamic>? _lastInitiatePaymentResponse;
   String _lastInitiateConfigKey = '';
 
   /// Re-entrancy lock acquired at the TOP of `processPayment`, BEFORE any
@@ -666,14 +640,14 @@ class CartControllerProvider extends ChangeNotifier {
           try {
             ShowToastDialog.showToast(
               'Could not prepare your order. Please check your cart, '
-              'delivery address and outlet, then try again.'.tr,
+                      'delivery address and outlet, then try again.'
+                  .tr,
             );
           } catch (_) {}
         }
         return false;
       }
       final response = await CartApiService.initiatePayment(payload: payload);
-      _lastInitiatePaymentResponse = response;
       _lastInitiatePaymentId = _extractPaymentReference(response);
       _lastInitiateConfigKey = configKey;
       debugPrint(
@@ -683,7 +657,6 @@ class CartControllerProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('[INITIATE_PAYMENT] Error: $e');
       _lastInitiatePaymentId = null;
-      _lastInitiatePaymentResponse = null;
       _lastInitiateConfigKey = '';
       if (!_isCalculatingPrice) {
         try {
@@ -711,7 +684,6 @@ class CartControllerProvider extends ChangeNotifier {
         return null;
       }
       final response = await CartApiService.initiatePayment(payload: payload);
-      _lastInitiatePaymentResponse = response;
       _lastInitiatePaymentId = _extractPaymentReference(response);
       _lastInitiateConfigKey = _paymentInitiateConfigKey(
         selectedPaymentMethod,
@@ -720,14 +692,11 @@ class CartControllerProvider extends ChangeNotifier {
         totalAmount,
         paymentGatewayAmount,
       );
-      debugPrint(
-        '[INITIATE_PAYMENT] FRESH reference: $_lastInitiatePaymentId',
-      );
+      debugPrint('[INITIATE_PAYMENT] FRESH reference: $_lastInitiatePaymentId');
       return response;
     } catch (e) {
       debugPrint('[INITIATE_PAYMENT] Error (force): $e');
       _lastInitiatePaymentId = null;
-      _lastInitiatePaymentResponse = null;
       _lastInitiateConfigKey = '';
       return null;
     }
@@ -1252,10 +1221,6 @@ class CartControllerProvider extends ChangeNotifier {
         selectedAddress = homeScreenAddress;
         _addressInitialized = true;
 
-        _cachedDistance = null;
-        _cachedCustomerLat = null;
-        _cachedCustomerLng = null;
-
         // await initialLiseSurgeValue(
         //   homeScreenAddress.location?.latitude ?? 0.0,
         //   homeScreenAddress.location?.longitude ?? 0.0,
@@ -1283,10 +1248,6 @@ class CartControllerProvider extends ChangeNotifier {
         );
         selectedAddress = defaultAddress;
         _addressInitialized = true;
-
-        _cachedDistance = null;
-        _cachedCustomerLat = null;
-        _cachedCustomerLng = null;
 
         // await initialLiseSurgeValue(
         //   defaultAddress.location?.latitude ?? 0.0,
@@ -1605,55 +1566,6 @@ class CartControllerProvider extends ChangeNotifier {
         normalizedDiscountType.contains("percent");
   }
 
-  // Future<void> _calculateDeliveryCharges() async {
-  //   if (selectedAddress?.location?.latitude != null &&
-  //       selectedAddress?.location?.longitude != null &&
-  //       vendorModel.latitude != null &&
-  //       vendorModel.longitude != null) {
-  //     final customerLat = selectedAddress?.location!.latitude;
-  //     final customerLng = selectedAddress?.location!.longitude;
-  //     final vendorLat = vendorModel.latitude!;
-  //     final vendorLng = vendorModel.longitude!;
-  //
-  //     // 🔑 OPTIMIZATION: Only recalculate distance if coordinates changed
-  //     if (_cachedDistance == null ||
-  //         _cachedCustomerLat != customerLat ||
-  //         _cachedCustomerLng != customerLng ||
-  //         _cachedVendorLat != vendorLat ||
-  //         _cachedVendorLng != vendorLng) {
-  //       final distanceString = Constant.getDistance(
-  //         lat1: customerLat.toString(),
-  //         lng1: customerLng.toString(),
-  //         lat2: vendorLat.toString(),
-  //         lng2: vendorLng.toString(),
-  //       );
-  //
-  //       _cachedDistance = double.parse(distanceString);
-  //       _cachedCustomerLat = customerLat;
-  //       _cachedCustomerLng = customerLng;
-  //       _cachedVendorLat = vendorLat;
-  //       _cachedVendorLng = vendorLng;
-  //     }
-  //
-  //     totalDistance = _cachedDistance!;
-  //   } else {
-  //     totalDistance = 0.0;
-  //     _cachedDistance = null;
-  //   }
-  //
-  //   // 🔑 OPTIMIZATION: Use cached cart item type checks
-  //   final hasPromotionalItems = _getCachedHasPromotionalItems();
-  //   final hasMartItems = _getCachedHasMartItems();
-  //
-  //   if (hasPromotionalItems) {
-  //     // calculatePromotionalDeliveryChargeFast();
-  //   } else if (hasMartItems) {
-  //     calculateMartDeliveryCharge();
-  //   } else {
-  //     calculateRegularDeliveryCharge();
-  //   }
-  // }
-
   Future<void> _calculateCoupons() async {
     CouponModel? activeCoupon;
 
@@ -1722,7 +1634,6 @@ class CartControllerProvider extends ChangeNotifier {
 
     // 🔑 OPTIMIZATION: Use cached cart item type checks
     final hasPromotionalItemsForTax = _getCachedHasPromotionalItems();
-    final hasMartItems = _getCachedHasMartItems();
 
     // 🔑 FIX: For promotional items, always use originalDeliveryFee (which includes base charge)
     // This ensures 18% GST is calculated on base charge even when delivery is free
@@ -1903,7 +1814,6 @@ class CartControllerProvider extends ChangeNotifier {
     totalAmount = checkout.toPay;
     _useServerCheckoutPricing = true;
     _lastInitiatePaymentId = null;
-    _lastInitiatePaymentResponse = null;
     _lastInitiateConfigKey = '';
   }
 
@@ -2070,674 +1980,12 @@ class CartControllerProvider extends ChangeNotifier {
     }
 
     // Clear distance cache
-    _cachedDistance = null;
-    _cachedCustomerLat = null;
-    _cachedCustomerLng = null;
-    _cachedVendorLat = null;
-    _cachedVendorLng = null;
 
     notifyListeners();
 
     // Now checkout API
     return await fetchCheckoutFromApi();
   }
-
-  // ============ PRICE SYNC OPTIMIZATIONS ============
-
-  // Future<void> syncCartPricesInBackground() async {
-  //   if (HomeProvider.cartItem.isEmpty) {
-  //     debugPrint('[PRICE_SYNC] Cart is empty, skipping sync');
-  //     return;
-  //   }
-  //
-  //   _startOperation('syncCartPrices');
-  //
-  //   try {
-  //     debugPrint('[PRICE_SYNC] 🔄 Starting optimized price sync...');
-  //
-  //     // 🔑 OPTIMIZATION: Skip if recently synced
-  //     final lastSyncKey = 'last_full_sync';
-  //     final lastSyncTime = _operationTimestamps[lastSyncKey];
-  //     if (lastSyncTime != null &&
-  //         DateTime.now().difference(lastSyncTime) < Duration(minutes: 1)) {
-  //       debugPrint('[PRICE_SYNC] ⏱️ Skipping - synced recently');
-  //       _endOperation('syncCartPrices');
-  //       return;
-  //     }
-  //
-  //     // 🔑 OPTIMIZATION: Process in smaller batches
-  //     final List<CartProductModel> itemsToSync = [];
-  //     for (var item in HomeProvider.cartItem) {
-  //       // Skip recently synced items
-  //       final itemLastSync = _operationTimestamps['sync_${item.id}'];
-  //       if (itemLastSync == null ||
-  //           DateTime.now().difference(itemLastSync) > Duration(minutes: 5)) {
-  //         itemsToSync.add(item);
-  //       }
-  //     }
-  //
-  //     if (itemsToSync.isEmpty) {
-  //       debugPrint('[PRICE_SYNC] ℹ️ No items need syncing');
-  //       _endOperation('syncCartPrices');
-  //       return;
-  //     }
-  //
-  //     debugPrint('[PRICE_SYNC] 🔍 Syncing ${itemsToSync.length} items');
-  //
-  //     // 🔑 OPTIMIZATION: Process in parallel batches
-  //     final batchSize = 5;
-  //     final List<List<CartProductModel>> batches = [];
-  //     for (int i = 0; i < itemsToSync.length; i += batchSize) {
-  //       batches.add(
-  //         itemsToSync.sublist(
-  //           i,
-  //           i + batchSize > itemsToSync.length
-  //               ? itemsToSync.length
-  //               : i + batchSize,
-  //         ),
-  //       );
-  //     }
-  //
-  //     bool hasUpdates = false;
-  //     bool variantMetaChanged = false;
-  //     List<PriceUpdateResult> allUpdates = [];
-  //
-  //     // Process batches in parallel but with rate limiting
-  //     for (int i = 0; i < batches.length; i++) {
-  //       final batch = batches[i];
-  //       debugPrint(
-  //         '[PRICE_SYNC] 📦 Processing batch ${i + 1}/${batches.length}',
-  //       );
-  //
-  //       try {
-  //         final batchOutcome = await validateAndUpdateCartPricesForBatch(batch);
-  //         final batchUpdates = batchOutcome.results;
-  //         final foodByCatalogId = batchOutcome.foodByCatalogId;
-  //         final martByLineId = batchOutcome.martByLineId;
-  //
-  //         for (var entry in batchUpdates.entries) {
-  //           final result = entry.value;
-  //
-  //           if (result.status == PriceStatus.error ||
-  //               result.status == PriceStatus.productNotFound) {
-  //             continue;
-  //           }
-  //
-  //           final catalogId = _catalogProductIdForFetch(result.productId);
-  //           final prefetchedFood = catalogId.isNotEmpty
-  //               ? foodByCatalogId[catalogId]
-  //               : null;
-  //           final prefetchedMart = martByLineId[result.productId];
-  //
-  //           if (result.hasPriceChange &&
-  //               result.oldPrice != null &&
-  //               result.newPrice != null) {
-  //             hasUpdates = true;
-  //             allUpdates.add(result);
-  //
-  //             await _updateCartItemPrice(
-  //               result,
-  //               prefetchedFood: prefetchedFood,
-  //               prefetchedMart: prefetchedMart,
-  //             );
-  //
-  //             debugPrint(
-  //               '[PRICE_SYNC] ✅ Updated ${result.productName}: ₹${result.oldPrice} → ₹${result.newPrice}',
-  //             );
-  //           } else {
-  //             final persisted = await _persistVariantInfoSyncForProductId(
-  //               result.productId,
-  //               prefetchedFood: prefetchedFood,
-  //             );
-  //             if (persisted) {
-  //               variantMetaChanged = true;
-  //               debugPrint(
-  //                 '[PRICE_SYNC] ✅ Synced variant/option fields for ${result.productId}',
-  //               );
-  //             }
-  //           }
-  //
-  //           _operationTimestamps['sync_${result.productId}'] = DateTime.now();
-  //           _recentlySyncedItems.add(result.productId);
-  //         }
-  //
-  //         if (i < batches.length - 1) {
-  //           await Future.delayed(const Duration(milliseconds: 60));
-  //         }
-  //       } catch (e) {
-  //         debugPrint('[PRICE_SYNC] ❌ Error in batch ${i + 1}: $e');
-  //       }
-  //     }
-  //
-  //     // Update timestamp
-  //     _operationTimestamps[lastSyncKey] = DateTime.now();
-  //
-  //     if (hasUpdates || variantMetaChanged) {
-  //       if (hasUpdates) {
-  //         debugPrint(
-  //           '[PRICE_SYNC] ✅ Sync complete with ${allUpdates.length} line updates',
-  //         );
-  //       }
-  //       if (variantMetaChanged && !hasUpdates) {
-  //         debugPrint(
-  //           '[PRICE_SYNC] ✅ Sync complete (variant/option metadata only)',
-  //         );
-  //       }
-  //
-  //       _priceSyncVersion++;
-  //       notifyListeners();
-  //       WidgetsBinding.instance.addPostFrameCallback((_) {
-  //         unawaited(calculatePrice());
-  //       });
-  //
-  //       if (allUpdates.isNotEmpty) {
-  //         WidgetsBinding.instance.addPostFrameCallback((_) {
-  //           _showEnhancedPriceUpdateDialog(allUpdates);
-  //         });
-  //       }
-  //     } else {
-  //       debugPrint('[PRICE_SYNC] ℹ️ No price changes detected');
-  //     }
-  //   } catch (e, stackTrace) {
-  //     debugPrint('[PRICE_SYNC] ❌ Error: $e');
-  //     debugPrint('[PRICE_SYNC] Stack trace: $stackTrace');
-  //   } finally {
-  //     _endOperation('syncCartPrices');
-  //   }
-  // }
-
-  void _showEnhancedPriceUpdateDialog(List<PriceUpdateResult> updates) {
-    try {
-      // Don't show if app is not in foreground
-      if (!Get.isSnackbarOpen) {
-        // For single update, show compact snackbar
-        if (updates.length == 1) {
-          final update = updates.first;
-          Get.snackbar(
-            '💰 Price Updated'.tr,
-            '${update.productName ?? "Item"}: ₹${update.oldPrice} → ₹${update.newPrice}',
-            snackPosition: SnackPosition.BOTTOM,
-            duration: Duration(seconds: 4),
-            backgroundColor: Colors.green,
-            colorText: Colors.white,
-            icon: Icon(Icons.currency_rupee, color: Colors.white),
-            shouldIconPulse: true,
-            margin: EdgeInsets.all(10),
-            borderRadius: 8,
-            animationDuration: Duration(milliseconds: 300),
-            mainButton: TextButton(
-              onPressed: () {
-                Get.closeCurrentSnackbar();
-                _showDetailedPriceUpdateDialog(updates);
-              },
-              child: Text('Details', style: TextStyle(color: Colors.white)),
-            ),
-          );
-        } else {
-          // For multiple updates, show expanded view
-          _showDetailedPriceUpdateDialog(updates);
-        }
-      }
-    } catch (e) {
-      debugPrint('[PRICE_UPDATE_UI] ❌ Error showing notification: $e');
-    }
-  }
-
-  void _showDetailedPriceUpdateDialog(List<PriceUpdateResult> updates) {
-    // Calculate total savings
-    double totalSavings = 0;
-    double totalIncrease = 0;
-
-    for (final update in updates) {
-      final oldPrice = double.tryParse(update.oldPrice ?? '0') ?? 0;
-      final newPrice = double.tryParse(update.newPrice ?? '0') ?? 0;
-      final difference = newPrice - oldPrice;
-
-      if (difference < 0) {
-        totalSavings += difference.abs();
-      } else if (difference > 0) {
-        totalIncrease += difference;
-      }
-    }
-
-    // Determine message based on price changes
-    String message = '';
-    Color primaryColor = Colors.blue;
-
-    if (totalSavings > 0 && totalIncrease == 0) {
-      message = 'You saved ₹${totalSavings.toStringAsFixed(2)}';
-      primaryColor = Colors.green;
-    } else if (totalIncrease > 0 && totalSavings == 0) {
-      message = 'Price increased by ₹${totalIncrease.toStringAsFixed(2)}';
-      primaryColor = Colors.orange;
-    } else if (totalSavings > 0 && totalIncrease > 0) {
-      message = 'Mixed price changes';
-      primaryColor = Colors.blue;
-    } else {
-      message = '${updates.length} items updated';
-    }
-
-    // Show as bottom sheet for better UX
-    Get.bottomSheet(
-      Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
-          boxShadow: [
-            BoxShadow(color: Colors.black26, blurRadius: 10, spreadRadius: 1),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header
-            Container(
-              padding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-              decoration: BoxDecoration(
-                color: primaryColor,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.currency_rupee, color: Colors.white, size: 24),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Price Updates',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.close, color: Colors.white),
-                    onPressed: () => Get.back(),
-                  ),
-                ],
-              ),
-            ),
-
-            // Summary
-            Padding(
-              padding: EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        totalSavings > totalIncrease
-                            ? Icons.savings
-                            : Icons.trending_up,
-                        color: totalSavings > totalIncrease
-                            ? Colors.green
-                            : Colors.orange,
-                        size: 28,
-                      ),
-                      SizedBox(width: 10),
-                      Text(
-                        message,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey[800],
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    '${updates.length} item${updates.length > 1 ? 's' : ''} updated',
-                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                  ),
-                ],
-              ),
-            ),
-
-            // Divider
-            Divider(height: 1, color: Colors.grey[300]),
-
-            // Item List
-            Container(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(Get.context!).size.height * 0.4,
-              ),
-              child: ListView.builder(
-                shrinkWrap: true,
-                physics: ClampingScrollPhysics(),
-                padding: EdgeInsets.zero,
-                itemCount: updates.length,
-                itemBuilder: (context, index) {
-                  final update = updates[index];
-                  final oldPrice = double.tryParse(update.oldPrice ?? '0') ?? 0;
-                  final newPrice = double.tryParse(update.newPrice ?? '0') ?? 0;
-                  final difference = newPrice - oldPrice;
-                  final isPriceDrop = difference < 0;
-
-                  return Container(
-                    decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(color: Colors.grey[200]!, width: 1),
-                      ),
-                    ),
-                    child: ListTile(
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      leading: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: isPriceDrop
-                              ? Colors.green.withOpacity(0.1)
-                              : Colors.orange.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          isPriceDrop
-                              ? Icons.arrow_downward
-                              : Icons.arrow_upward,
-                          color: isPriceDrop ? Colors.green : Colors.orange,
-                          size: 20,
-                        ),
-                      ),
-                      title: Text(
-                        update.productName ?? 'Item ${index + 1}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      subtitle: Text(
-                        isPriceDrop ? 'Price decreased' : 'Price increased',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      ),
-                      trailing: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            '₹${newPrice.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: isPriceDrop ? Colors.green : Colors.orange,
-                            ),
-                          ),
-                          Text(
-                            '₹${oldPrice.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[500],
-                              decoration: TextDecoration.lineThrough,
-                            ),
-                          ),
-                          SizedBox(height: 2),
-                          Text(
-                            isPriceDrop
-                                ? 'Save ₹${difference.abs().toStringAsFixed(2)}'
-                                : '+₹${difference.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: isPriceDrop ? Colors.green : Colors.orange,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            // Footer buttons
-            Padding(
-              padding: EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Get.back(),
-                      style: OutlinedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        side: BorderSide(color: Colors.grey[300]!),
-                      ),
-                      child: Text(
-                        'Continue Shopping',
-                        style: TextStyle(color: Colors.grey[700]),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Get.back(); // Close the dialog first
-                        calculatePrice(); // Recalculate cart total
-
-                        // Navigate to cart screen after a small delay
-                        Future.delayed(Duration(milliseconds: 300), () {
-                          Get.to(() => CartScreen()); // Navigate to cart screen
-                        });
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryColor,
-                        padding: EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: Text(
-                        'Update Cart',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Safe area for bottom navigation
-            SizedBox(height: MediaQuery.of(Get.context!).padding.bottom),
-          ],
-        ),
-      ),
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      enableDrag: true,
-    );
-  }
-
-  /// Compares [cartItem] with already-fetched catalog [currentProduct] (no I/O).
-  // PriceUpdateResult _priceUpdateResultFromFetchedProduct(
-  //   CartProductModel cartItem,
-  //   dynamic currentProduct,
-  // ) {
-  //   if (currentProduct == null) {
-  //     return PriceUpdateResult(
-  //       productId: cartItem.id!,
-  //       status: PriceStatus.productNotFound,
-  //       oldPrice: cartItem.price,
-  //       productName: cartItem.name,
-  //     );
-  //   }
-  //
-  //   final currentPrice = _getCurrentProductPrice(currentProduct, cartItem);
-  //
-  //   final storedDiscountPrice =
-  //       double.tryParse(cartItem.discountPrice ?? "0") ?? 0.0;
-  //   final storedRegularPrice = double.tryParse(cartItem.price ?? "0") ?? 0.0;
-  //   final storedDisplayPrice =
-  //       storedDiscountPrice > 0 && storedDiscountPrice < storedRegularPrice
-  //       ? storedDiscountPrice
-  //       : storedRegularPrice;
-  //
-  //   if ((currentPrice - storedDisplayPrice).abs() > 0.01) {
-  //     return PriceUpdateResult(
-  //       productId: cartItem.id!,
-  //       status: PriceStatus.priceChanged,
-  //       oldPrice: storedDisplayPrice.toStringAsFixed(2),
-  //       newPrice: currentPrice.toStringAsFixed(2),
-  //       productName: cartItem.name,
-  //     );
-  //   }
-  //   return PriceUpdateResult(
-  //     productId: cartItem.id!,
-  //     status: PriceStatus.noChange,
-  //     oldPrice: storedDisplayPrice.toStringAsFixed(2),
-  //     newPrice: currentPrice.toStringAsFixed(2),
-  //   );
-  // }
-  //
-  // /// One HTTP round-trip per unique catalog id + parallel mart reads.
-  // /// Returns maps so callers can apply updates without re-fetching each product.
-  // Future<
-  //   ({
-  //     Map<String, PriceUpdateResult> results,
-  //     Map<String, ProductModel?> foodByCatalogId,
-  //     Map<String, MartItemModel?> martByLineId,
-  //   })
-  // >
-  // validateAndUpdateCartPricesForBatch(List<CartProductModel> batch) async {
-  //   final Map<String, PriceUpdateResult> results = {};
-  //
-  //   final foodCatalogIds = <String>{};
-  //   final martLineIds = <String>{};
-  //
-  //   for (final cartItem in batch) {
-  //     if (cartItem.id == null || cartItem.id!.isEmpty) continue;
-  //     if (cartItem.promoId != null && cartItem.promoId!.isNotEmpty) continue;
-  //     if (_isMartItem(cartItem)) {
-  //       martLineIds.add(cartItem.id!);
-  //     } else {
-  //       final cid = _catalogProductIdForFetch(cartItem.id!);
-  //       if (cid.isNotEmpty) foodCatalogIds.add(cid);
-  //     }
-  //   }
-  //
-  //   var foodByCatalogId = <String, ProductModel?>{};
-  //   var martByLineId = <String, MartItemModel?>{};
-  //
-  //   try {
-  //     await Future.wait([
-  //       Future(() async {
-  //         if (foodCatalogIds.isEmpty) return;
-  //         final fetched = await FireStoreUtils.getProductsByIds(
-  //           foodCatalogIds.toList(),
-  //           forceRefresh: true,
-  //         );
-  //         foodByCatalogId.addAll(fetched);
-  //       }),
-  //       Future(() async {
-  //         if (martLineIds.isEmpty) return;
-  //         final martService = Get.find<MartFirestoreService>();
-  //         await Future.wait(
-  //           martLineIds.map((lineId) async {
-  //             try {
-  //               martByLineId[lineId] = await martService.getItemById(lineId);
-  //             } catch (_) {
-  //               martByLineId[lineId] = null;
-  //             }
-  //           }),
-  //         );
-  //       }),
-  //     ]);
-  //   } catch (e) {
-  //     debugPrint('[BATCH_VALIDATE] ❌ Prefetch failed: $e');
-  //     foodByCatalogId = {};
-  //     martByLineId = {};
-  //   }
-  //
-  //   Future<PriceUpdateResult?> validateOne(CartProductModel cartItem) async {
-  //     try {
-  //       if (cartItem.id == null || cartItem.id!.isEmpty) {
-  //         return PriceUpdateResult(
-  //           productId: cartItem.id ?? 'unknown',
-  //           status: PriceStatus.error,
-  //           error: 'Invalid product ID',
-  //         );
-  //       }
-  //
-  //       if (cartItem.promoId != null && cartItem.promoId!.isNotEmpty) {
-  //         return PriceUpdateResult(
-  //           productId: cartItem.id!,
-  //           status: PriceStatus.noChange,
-  //           oldPrice: cartItem.price,
-  //           newPrice: cartItem.price,
-  //           productName: cartItem.name,
-  //         );
-  //       }
-  //
-  //       if (_isMartItem(cartItem)) {
-  //         return _priceUpdateResultFromFetchedProduct(
-  //           cartItem,
-  //           martByLineId[cartItem.id!],
-  //         );
-  //       }
-  //
-  //       final catalogId = _catalogProductIdForFetch(cartItem.id!);
-  //       if (catalogId.isEmpty) {
-  //         return PriceUpdateResult(
-  //           productId: cartItem.id!,
-  //           status: PriceStatus.error,
-  //           oldPrice: cartItem.price,
-  //           productName: cartItem.name,
-  //           error: 'Invalid catalog product id',
-  //         );
-  //       }
-  //       return _priceUpdateResultFromFetchedProduct(
-  //         cartItem,
-  //         foodByCatalogId[catalogId],
-  //       );
-  //     } catch (e) {
-  //       debugPrint('[BATCH_VALIDATE] ❌ Error validating ${cartItem.id}: $e');
-  //       return PriceUpdateResult(
-  //         productId: cartItem.id!,
-  //         status: PriceStatus.error,
-  //         oldPrice: cartItem.price,
-  //         error: e.toString(),
-  //       );
-  //     }
-  //   }
-  //
-  //   try {
-  //     final batchResults = await Future.wait(
-  //       batch.map(validateOne),
-  //       eagerError: false,
-  //     );
-  //
-  //     for (var result in batchResults) {
-  //       if (result != null) {
-  //         results[result.productId] = result;
-  //       }
-  //     }
-  //   } catch (e) {
-  //     debugPrint('[BATCH_VALIDATE] ❌ Batch validation failed: $e');
-  //   }
-  //
-  //   return (
-  //     results: results,
-  //     foodByCatalogId: foodByCatalogId,
-  //     martByLineId: martByLineId,
-  //   );
-  // }
-
-  // ============ PROFILE VALIDATION METHODS ============
 
   Future<void> validateUserProfile() async {
     await validateUserProfileBulletproof();
@@ -2778,45 +2026,6 @@ class CartControllerProvider extends ChangeNotifier {
           }
         }
       }
-
-      // if (user == null) {
-      //   isProfileValid = false;
-      //   ShowToastDialog.showToast(
-      //     "Unable to verify profile. Please check your internet connection and try again."
-      //         .tr,
-      //   );
-      //   return;
-      // }
-
-      // final hasFirstName =
-      //     user.firstName != null &&
-      //     user.firstName!.trim().isNotEmpty &&
-      //     user.firstName!.trim().length >= 2;
-      //
-      // final hasPhoneNumber =
-      //     user.phoneNumber != null &&
-      //     user.phoneNumber!.trim().isNotEmpty &&
-      //     user.phoneNumber!.trim().length >= 10;
-      //
-      // final hasEmail =
-      //     user.email != null &&
-      //     user.email!.trim().isNotEmpty &&
-      //     user.email!.contains('@') &&
-      //     user.email!.contains('.');
-      //
-      // isProfileValid = hasFirstName && hasPhoneNumber && hasEmail;
-      //
-      // userModel = user;
-      // Constant.userModel = user;
-
-      // if (!isProfileValid) {
-      //   final missingFields = <String>[];
-      //   if (!hasFirstName) missingFields.add('First Name (min 2 chars)');
-      //   if (!hasPhoneNumber) missingFields.add('Phone Number (min 10 digits)');
-      //   if (!hasEmail) missingFields.add('Valid Email Address');
-      //
-      //   debugPrint('[PROFILE] ⚠️ Missing fields: ${missingFields.join(', ')}');
-      // }
 
       notifyListeners();
     } catch (e) {
@@ -2989,18 +2198,6 @@ class CartControllerProvider extends ChangeNotifier {
 
   List<CartProductModel> tempProduc = [];
 
-  /// Check if order is already in progress (idempotency)
-  // bool _isOrderInProgress() {
-  //   return _orderInProgress || isProcessingOrder;
-  // }
-
-  /// Start order processing with idempotency
-  void _startOrderProcessing() {
-    _orderInProgress = true;
-    isProcessingOrder = true;
-    notifyListeners();
-  }
-
   // ============ ORDER PROCESSING METHODS ============
 
   placeOrder(BuildContext context) async {
@@ -3024,13 +2221,6 @@ class CartControllerProvider extends ChangeNotifier {
       // 🔑 IMPORTANT: Set processing flag EARLY
       startOrderProcessing();
       lastOrderAttempt = DateTime.now();
-
-      // Validate before proceeding
-      // if (!await validateOrderBeforePayment(context)) {
-      //   // 🔑 CRITICAL: Clear processing flag on validation failure
-      //   endOrderProcessing();
-      //   return;
-      // }
 
       if (HomeProvider.cartItem.isEmpty) {
         ShowToastDialog.showToast(
@@ -3112,15 +2302,6 @@ class CartControllerProvider extends ChangeNotifier {
 
   Future<void> _processCODOrder() async {
     try {
-      // Validate COD availability.
-      //
-      // Gate on the same getter the payment tiles and the 1s COD guard timer
-      // use, so a COD order can never be offered by the UI and then rejected
-      // on submit. Previously this checked isCodEnabledForCurrentZone /
-      // isCodActiveFromApi directly, which disagreed with the UI: /co/checkout
-      // returned codAvailable:true (tile enabled) while the legacy, never
-      // populated zone cache said false, so every COD submit died with
-      // "Cash on Delivery is not available in your zone".
       debugPrint(
         '[COD] availableForOrder=$isCodAvailableForCurrentOrder '
         'zoneEnabled=$isCodEnabledForCurrentZone '
@@ -3138,13 +2319,6 @@ class CartControllerProvider extends ChangeNotifier {
         return;
       }
 
-      // `checkoutCodAvailable` is already folded into isCodAvailableForCurrentOrder
-      // above (and defaults to true when no checkout response exists yet), so a
-      // second gate here could never fire.
-
-      // Only enforce the cap when the backend actually supplied one.
-      // [codMaxAmountForCurrentZone] falls back to 599 purely for display, and
-      // enforcing that placeholder would reject orders the server had allowed.
       final codCap = codMaxAmountForCurrentZoneOrNull;
       if (codCap != null) {
         final codAmountCheck = useWalletBalance
@@ -3188,9 +2362,7 @@ class CartControllerProvider extends ChangeNotifier {
   void endOrderProcessing() {
     // 🔑 CRITICAL: Reset ALL processing flags
     isProcessingOrder = false;
-    _orderInProgress = false;
     _isOrderBeingCreated = false;
-    _isGlobalLocked = false;
 
     debugPrint('✅ [ORDER_PROCESSING] All flags reset');
 
@@ -3212,29 +2384,6 @@ class CartControllerProvider extends ChangeNotifier {
       await placeOrderAfterPayment();
     } catch (e) {
       debugPrint('❌ [RAZORPAY_ORDER] Error: $e');
-      ShowToastDialog.closeLoader();
-      endOrderProcessing();
-      ShowToastDialog.showToast(
-        "Failed to process order. Please try again.".tr,
-      );
-    }
-  }
-
-  Future<void> _processPaytmOrder() async {
-    try {
-      if (!isPaymentCompleted || _lastPaymentId == null) {
-        ShowToastDialog.showToast(
-          "Payment not completed. Please complete payment before placing order."
-              .tr,
-        );
-        endOrderProcessing();
-        return;
-      }
-
-      ShowToastDialog.showLoader("Processing your order...".tr);
-      await placeOrderAfterPayment();
-    } catch (e) {
-      debugPrint('❌ [PAYTM_ORDER] Error: $e');
       ShowToastDialog.closeLoader();
       endOrderProcessing();
       ShowToastDialog.showToast(
@@ -3589,7 +2738,6 @@ class CartControllerProvider extends ChangeNotifier {
 
   // Add this method if it's missing:
   void startOrderProcessing() {
-    _orderInProgress = true;
     isProcessingOrder = true;
     notifyListeners();
   }
@@ -3671,419 +2819,6 @@ class CartControllerProvider extends ChangeNotifier {
       return null;
     }
   }
-
-  // Add this method if it's missing (from CartControllerProvider):
-  // Future<String> getAdminSurgeFee() async {
-  //   try {
-  //     final response = await http.get(
-  //       Uri.parse('${AppConst.baseUrl}mobile/surge-rules/admin-fee'),
-  //       headers: await getHeaders(),
-  //     );
-  //
-  //     debugPrint("getAdminSurgeFee ${response.body} ");
-  //     if (response.statusCode == 200) {
-  //       final Map<String, dynamic> responseData = json.decode(response.body);
-  //
-  //       if (responseData['success'] == true) {
-  //         final adminSurgeFee = responseData['data']['admin_surge_fee']
-  //             .toString();
-  //         debugPrint("Admin Surge Fee: $adminSurgeFee");
-  //         return adminSurgeFee;
-  //       } else {
-  //         throw Exception("API returned unsuccessful response");
-  //       }
-  //     } else {
-  //       throw Exception(
-  //         "Failed to fetch admin surge fee: ${response.statusCode}",
-  //       );
-  //     }
-  //   } catch (e) {
-  //     throw Exception("Error fetching admin surge fee: $e");
-  //   }
-  // }
-
-  /// Cart rows use `baseId~variantId`; product APIs only accept [baseId].
-  String _catalogProductIdForFetch(String? cartRowId) {
-    if (cartRowId == null || cartRowId.isEmpty) return '';
-    final t = cartRowId.trim();
-    if (t.toLowerCase() == 'null') return '';
-    final tilde = t.indexOf('~');
-    if (tilde <= 0) return t;
-    return t.substring(0, tilde).trim();
-  }
-
-  double _storedCartUnitDisplayPrice(CartProductModel cartItem) {
-    final d = double.tryParse(cartItem.discountPrice ?? '0') ?? 0.0;
-    final p = double.tryParse(cartItem.price ?? '0') ?? 0.0;
-    if (d > 0 && d < p) return d;
-    return p;
-  }
-
-  bool _idsLooselyEqual(String? a, String? b) {
-    if (a == null || b == null) return false;
-    final as = a.trim();
-    final bs = b.trim();
-    if (as.isEmpty || bs.isEmpty) return false;
-    if (as == bs) return true;
-    final ai = int.tryParse(as);
-    final bi = int.tryParse(bs);
-    if (ai != null && bi != null && ai == bi) return true;
-    return false;
-  }
-
-  ProductOption? _matchProductOption(ProductModel product, VariantInfo? vi) {
-    if (vi == null || product.options == null || product.options!.isEmpty) {
-      return null;
-    }
-    final vid = vi.variantId?.trim();
-    if (vid != null && vid.isNotEmpty && vid != '0') {
-      for (final o in product.options!) {
-        if (_idsLooselyEqual(o.id, vid)) return o;
-      }
-    }
-    final sku = vi.variantSku?.trim();
-    if (sku != null && sku.isNotEmpty) {
-      for (final o in product.options!) {
-        if (o.subtitle == sku || o.title == sku) return o;
-      }
-    }
-    return null;
-  }
-
-  Variants? _matchItemAttributeVariant(ProductModel product, VariantInfo? vi) {
-    if (vi == null || product.itemAttribute?.variants == null) return null;
-    final vars = product.itemAttribute!.variants!;
-    final vid = vi.variantId?.trim();
-    if (vid != null && vid.isNotEmpty && vid != '0') {
-      for (final v in vars) {
-        if (_idsLooselyEqual(v.variantId, vid)) return v;
-      }
-    }
-    final sku = vi.variantSku?.trim();
-    if (sku != null && sku.isNotEmpty) {
-      try {
-        return vars.firstWhere((v) => v.variantSku == sku);
-      } catch (_) {}
-    }
-    return null;
-  }
-
-  /// Updates [vi] from live [product] (option / attribute variant prices and
-  /// `variant_options` merchant_price when applicable). Returns true if any field changed.
-  bool _syncVariantInfoFieldsFromProduct(VariantInfo vi, ProductModel product) {
-    bool changed = false;
-    final opt = _matchProductOption(product, vi);
-    if (opt != null) {
-      final newVp = opt.price ?? '0';
-      if (vi.variantPrice != newVp) {
-        vi.variantPrice = newVp;
-        changed = true;
-      }
-      final merchantVal =
-          (opt.originalPrice != null && opt.originalPrice!.trim().isNotEmpty)
-          ? opt.originalPrice!
-          : newVp;
-      if (vi.variantOptions is Map) {
-        final m = Map<String, dynamic>.from(vi.variantOptions as Map);
-        final prevMerchant = m['merchant_price']?.toString();
-        if (prevMerchant != merchantVal) {
-          m['merchant_price'] = merchantVal;
-          vi.variantOptions = m;
-          changed = true;
-        }
-      } else if (merchantVal.isNotEmpty) {
-        vi.variantOptions = <String, dynamic>{
-          if (vi.variantOptions is Map)
-            ...Map<String, dynamic>.from(vi.variantOptions as Map),
-          'merchant_price': merchantVal,
-        };
-        changed = true;
-      }
-      return changed;
-    }
-
-    final variant = _matchItemAttributeVariant(product, vi);
-    if (variant != null) {
-      final newVp = variant.variantPrice ?? '0';
-      if (vi.variantPrice != newVp) {
-        vi.variantPrice = newVp;
-        changed = true;
-      }
-      final img = variant.variantImage;
-      if (img != null && img.isNotEmpty && vi.variantImage != img) {
-        vi.variantImage = img;
-        changed = true;
-      }
-    }
-    return changed;
-  }
-
-  /// Persists `variant_info` (option price, merchant_price in variant_options map, etc.)
-  /// for all cart rows with [productId], when line price was already correct.
-  // Future<bool> _persistVariantInfoSyncForProductId(
-  //   String productId, {
-  //   ProductModel? prefetchedFood,
-  // }) async {
-  //   bool anyChanged = false;
-  //   for (int i = 0; i < HomeProvider.cartItem.length; i++) {
-  //     final cartItem = HomeProvider.cartItem[i];
-  //     if (cartItem.id != productId) continue;
-  //     if (cartItem.promoId != null && cartItem.promoId!.isNotEmpty) continue;
-  //     if (cartItem.variantInfo == null) continue;
-  //     if (_isMartItem(cartItem)) continue;
-  //     if (cartItem.id == null || cartItem.id!.isEmpty) continue;
-  //
-  //     try {
-  //       final catalogId = _catalogProductIdForFetch(cartItem.id!);
-  //       if (catalogId.isEmpty) continue;
-  //       ProductModel? currentProduct = prefetchedFood;
-  //       currentProduct ??= await FireStoreUtils.getProductById(
-  //         catalogId,
-  //         forceRefresh: true,
-  //       );
-  //       if (currentProduct is! ProductModel) continue;
-  //       bool rowChanged = _syncVariantInfoFieldsFromProduct(
-  //         cartItem.variantInfo!,
-  //         currentProduct,
-  //       );
-  //       final live = _getCurrentProductPrice(currentProduct, cartItem);
-  //       final storedDiscount =
-  //           double.tryParse(cartItem.discountPrice ?? '0') ?? 0.0;
-  //       final storedReg = double.tryParse(cartItem.price ?? '0') ?? 0.0;
-  //       final storedDisplay = storedDiscount > 0 && storedDiscount < storedReg
-  //           ? storedDiscount
-  //           : storedReg;
-  //       if ((live - storedDisplay).abs() > 0.01) {
-  //         cartItem.price = live.toStringAsFixed(2);
-  //         cartItem.discountPrice = '0';
-  //         rowChanged = true;
-  //       }
-  //       if (rowChanged) {
-  //         anyChanged = true;
-  //         await DatabaseHelper.instance.updateCartProduct(cartItem);
-  //         HomeProvider.cartItem[i] = cartItem;
-  //       }
-  //     } catch (e) {
-  //       debugPrint('[PRICE_SYNC] variant metadata sync error: $e');
-  //     }
-  //   }
-  //   return anyChanged;
-  // }
-
-  double _getCurrentProductPrice(dynamic product, CartProductModel cartItem) {
-    try {
-      if (cartItem.variantInfo != null && product is ProductModel) {
-        final opt = _matchProductOption(product, cartItem.variantInfo);
-        if (opt != null && opt.price != null) {
-          if (vendorModel.id != null) {
-            return double.parse(
-              Constant.productCommissionPrice(vendorModel, opt.price ?? '0'),
-            );
-          }
-          return double.tryParse(opt.price ?? '0') ?? 0.0;
-        }
-
-        final variant = _matchItemAttributeVariant(
-          product,
-          cartItem.variantInfo,
-        );
-        if (variant != null && variant.variantPrice != null) {
-          if (vendorModel.id != null) {
-            return double.parse(
-              Constant.productCommissionPrice(
-                vendorModel,
-                variant.variantPrice ?? product.price ?? "0",
-              ),
-            );
-          }
-          return double.tryParse(variant.variantPrice ?? "0") ?? 0.0;
-        }
-
-        final rawVp = cartItem.variantInfo?.variantPrice?.trim();
-        final rawParsed = rawVp != null ? double.tryParse(rawVp) : null;
-        if (rawParsed != null && rawParsed > 0) {
-          if (vendorModel.id != null) {
-            return double.parse(
-              Constant.productCommissionPrice(vendorModel, rawVp),
-            );
-          }
-          return rawParsed;
-        }
-
-        return _storedCartUnitDisplayPrice(cartItem);
-      }
-
-      if (product is MartItemModel) {
-        return product.finalPrice;
-      }
-
-      if (product is ProductModel) {
-        if (cartItem.promoId != null && cartItem.promoId!.isNotEmpty) {
-          if (vendorModel.id != null) {
-            return double.parse(
-              Constant.productCommissionPrice(
-                vendorModel,
-                product.price ?? "0",
-              ),
-            );
-          }
-          return double.tryParse(product.price ?? "0") ?? 0.0;
-        }
-
-        if (product.disPrice != null &&
-            double.tryParse(product.disPrice!) != null &&
-            double.tryParse(product.price ?? "0") != null) {
-          final disPrice = double.parse(product.disPrice!);
-          final regPrice = double.parse(product.price ?? "0");
-          if (disPrice > 0 && disPrice < regPrice) {
-            if (vendorModel.id != null) {
-              return double.parse(
-                Constant.productCommissionPrice(
-                  vendorModel,
-                  product.disPrice ?? "0",
-                ),
-              );
-            }
-            return disPrice;
-          }
-        }
-
-        if (vendorModel.id != null) {
-          return double.parse(
-            Constant.productCommissionPrice(vendorModel, product.price ?? "0"),
-          );
-        }
-        return double.tryParse(product.price ?? "0") ?? 0.0;
-      }
-    } catch (e) {
-      debugPrint('Error getting current product price: $e');
-    }
-
-    return 0.0;
-  }
-
-  // Future<void> _updateCartItemPrice(
-  //   PriceUpdateResult result, {
-  //   ProductModel? prefetchedFood,
-  //   MartItemModel? prefetchedMart,
-  // }) async {
-  //   try {
-  //     final cartItemIndex = HomeProvider.cartItem.indexWhere(
-  //       (item) => item.id == result.productId,
-  //     );
-  //
-  //     if (cartItemIndex < 0) return;
-  //
-  //     final cartItem = HomeProvider.cartItem[cartItemIndex];
-  //     final isMart = _isMartItem(cartItem);
-  //
-  //     dynamic currentProduct;
-  //
-  //     if (isMart) {
-  //       currentProduct = prefetchedMart;
-  //       if (currentProduct == null) {
-  //         final martService = Get.find<MartFirestoreService>();
-  //         currentProduct = await martService.getItemById(cartItem.id!);
-  //       }
-  //     } else {
-  //       final catalogId = _catalogProductIdForFetch(cartItem.id!);
-  //       currentProduct = prefetchedFood;
-  //       if (currentProduct == null && catalogId.isNotEmpty) {
-  //         currentProduct = await FireStoreUtils.getProductById(
-  //           catalogId,
-  //           forceRefresh: true,
-  //         );
-  //       }
-  //     }
-  //
-  //     if (currentProduct != null) {
-  //       if (currentProduct is MartItemModel) {
-  //         cartItem.price = currentProduct.price.toStringAsFixed(2);
-  //         if (currentProduct.disPrice != null &&
-  //             currentProduct.disPrice! < currentProduct.price &&
-  //             currentProduct.disPrice! > 0) {
-  //           cartItem.discountPrice = currentProduct.disPrice!.toStringAsFixed(
-  //             2,
-  //           );
-  //         } else {
-  //           cartItem.discountPrice = "0";
-  //         }
-  //       } else if (currentProduct is ProductModel) {
-  //         cartItem.price = result.newPrice;
-  //         if (cartItem.variantInfo != null) {
-  //           cartItem.discountPrice = "0";
-  //         } else if (currentProduct.disPrice != null &&
-  //             double.tryParse(currentProduct.disPrice!) != null &&
-  //             double.tryParse(currentProduct.price ?? "0") != null) {
-  //           final disPrice = double.parse(currentProduct.disPrice!);
-  //           final regPrice = double.parse(currentProduct.price ?? "0");
-  //           if (disPrice > 0 && disPrice < regPrice) {
-  //             if (vendorModel.id != null) {
-  //               cartItem.discountPrice = Constant.productCommissionPrice(
-  //                 vendorModel,
-  //                 currentProduct.disPrice ?? "0",
-  //               );
-  //             } else {
-  //               cartItem.discountPrice = currentProduct.disPrice;
-  //             }
-  //           } else {
-  //             cartItem.discountPrice = "0";
-  //           }
-  //         } else {
-  //           cartItem.discountPrice = "0";
-  //         }
-  //       }
-  //     } else {
-  //       cartItem.price = result.newPrice;
-  //     }
-  //
-  //     if (cartItem.variantInfo != null && currentProduct is ProductModel) {
-  //       _syncVariantInfoFieldsFromProduct(
-  //         cartItem.variantInfo!,
-  //         currentProduct,
-  //       );
-  //     }
-  //
-  //     await DatabaseHelper.instance.updateCartProduct(cartItem);
-  //     HomeProvider.cartItem[cartItemIndex] = cartItem;
-  //
-  //     debugPrint(
-  //       '[PRICE_UPDATE] ✅ Updated ${result.productName ?? cartItem.name}: ₹${result.oldPrice ?? "N/A"} → ₹${result.newPrice ?? "N/A"}',
-  //     );
-  //   } catch (e) {
-  //     debugPrint('[PRICE_UPDATE] ❌ Error: $e');
-  //   }
-  // }
-
-  // Future<void> _applyBatchUpdates() async {
-  //   try {
-  //     await cartProvider.refreshCart();
-  //
-  //     final updatedItems = await DatabaseHelper.instance.fetchCartProducts();
-  //
-  //     if (updatedItems.length == HomeProvider.cartItem.length) {
-  //       for (int i = 0; i < updatedItems.length; i++) {
-  //         HomeProvider.cartItem[i] = updatedItems[i];
-  //       }
-  //     } else {
-  //       HomeProvider.cartItem
-  //         ..clear()
-  //         ..addAll(updatedItems);
-  //     }
-  //
-  //     cartProvider.forceStreamUpdate();
-  //     await _calculatePriceInternal();
-  //
-  //     _priceSyncVersion++;
-  //     notifyListeners();
-  //
-  //     debugPrint('[BATCH_UPDATE] ✅ Applied batch updates');
-  //   } catch (e) {
-  //     debugPrint('[BATCH_UPDATE] ❌ Error: $e');
-  //   }
-  // }
-
-  // ============ CART OPERATIONS ============
 
   Future<void> forceRefreshCart() async {
     _startOperation('forceRefreshCart');
@@ -4180,14 +2915,6 @@ class CartControllerProvider extends ChangeNotifier {
         await _loadFreshVendorForCart();
       }
 
-      // await _loadCalculationCache();
-      //
-      // unawaited(
-      //   _loadNewProductsIncrementally().catchError((e) {
-      //     debugPrint('[CART_DATA] Error loading products: $e');
-      //   }),
-      // );
-
       await calculatePrice();
       checkAndUpdatePaymentMethod();
       updateCartReadiness();
@@ -4198,13 +2925,6 @@ class CartControllerProvider extends ChangeNotifier {
       Preferences.foodDeliveryType,
       defaultValue: "Delivery".tr,
     );
-
-    // Run independent operations in parallel to reduce total time
-    // await Future.wait([
-    //   if (userModel.id == null) _loadUserProfileForCart(),
-    //   if (_cachedDeliveryCharge == null || !_isCacheValid())
-    //     // _loadDeliveryChargeForCart(),
-    // ]);
 
     _detectCurrentContext();
 
@@ -4242,110 +2962,9 @@ class CartControllerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _loadUserProfileForCart() async {
-    try {
-      final userId = await SqlStorageConst.getFirebaseId();
-      final value = await AddressListProvider.getUserProfile(userId.toString());
-      if (value != null) userModel = value;
-    } catch (_) {}
-  }
-
-  // Future<void> _loadDeliveryChargeForCart() async {
-  //   try {
-  //     // Use delivery charge cache utility for dynamic delivery charges
-  //     final value = await DeliveryChargeCache.instance.getDeliveryCharge();
-  //     if (value != null) {
-  //       deliveryChargeModel = value;
-  //       _cachedDeliveryCharge = value;
-  //       _updateCacheTime();
-  //       calculatePrice();
-  //     }
-  //   } catch (_) {}
-  // }
-
-  // Future<void> preloadCartProducts({bool forceRefresh = false}) async {
-  //   if (_isLoadingProducts && !forceRefresh) return;
-  //
-  //   if (forceRefresh) {
-  //     _productCache.clear();
-  //     _productsLoaded = false;
-  //   }
-  //
-  //   _isLoadingProducts = true;
-  //   _startOperation('preloadCartProducts');
-  //
-  //   try {
-  //     final Set<String> productIds = {};
-  //
-  //     for (final cartItem in HomeProvider.cartItem) {
-  //       if (cartItem.id != null &&
-  //           cartItem.id!.isNotEmpty &&
-  //           cartItem.id!.toLowerCase() != 'null') {
-  //         final parts = cartItem.id!.split('~');
-  //         if (parts.isNotEmpty &&
-  //             parts.first.isNotEmpty &&
-  //             parts.first.toLowerCase() != 'null') {
-  //           productIds.add(parts.first);
-  //         }
-  //       }
-  //     }
-  //
-  //     final Set<String> productsToLoad = forceRefresh
-  //         ? productIds
-  //         : productIds.where((id) => !_productCache.containsKey(id)).toSet();
-  //     final Map<String, CartProductModel> cartItemsByProductId = {
-  //       for (final item in HomeProvider.cartItem)
-  //         if (item.id != null && item.id!.isNotEmpty)
-  //           item.id!.split('~').first: item,
-  //     };
-  //
-  //     if (productsToLoad.isEmpty) {
-  //       _productsLoaded = true;
-  //       notifyListeners();
-  //       return;
-  //     }
-  //
-  //     final List<Future<void>> loadFutures = productsToLoad.map((
-  //       productId,
-  //     ) async {
-  //       try {
-  //         final cartItem =
-  //             cartItemsByProductId[productId] ?? CartProductModel();
-  //
-  //         final isMartItem = _isMartItem(cartItem);
-  //
-  //         if (isMartItem) {
-  //           _productCache[productId] = null;
-  //         } else {
-  //           final product = await FireStoreUtils.getProductById(productId);
-  //           _productCache[productId] = product;
-  //         }
-  //       } catch (e) {
-  //         debugPrint('[CART_PRODUCT] Error loading product $productId: $e');
-  //         _productCache[productId] = null;
-  //       }
-  //     }).toList();
-  //
-  //     await Future.wait(loadFutures);
-  //     _productsLoaded = true;
-  //     notifyListeners();
-  //   } catch (e) {
-  //     debugPrint('[CART_PRODUCT] Error preloading products: $e');
-  //   } finally {
-  //     _isLoadingProducts = false;
-  //     _endOperation('preloadCartProducts');
-  //   }
-  // }
-
-  // ============ HELPER METHODS ============
-
   bool _isCacheValid() {
     return _lastCacheTime != null &&
         DateTime.now().difference(_lastCacheTime!) < cacheExpiry;
-  }
-
-  void _updateCacheTime() {
-    _lastCacheTime = DateTime.now();
   }
 
   void _clearVendorCache() {
@@ -4358,8 +2977,6 @@ class CartControllerProvider extends ChangeNotifier {
 
   /// Smart cache: invalidate when cart/vendor changes so UI reflects DB changes
   void _invalidateCartRelatedCaches() {
-    _cachedGlobalCouponList = null;
-    _lastGlobalCouponCacheTime = null;
     _cachedCouponList = null;
     // 🔑 OPTIMIZATION: Invalidate cart type cache
     _cachedHasPromotionalItems = null;
@@ -4367,11 +2984,6 @@ class CartControllerProvider extends ChangeNotifier {
     _lastCartItemCount = 0;
     _lastCartItemHash = null;
     // 🔑 OPTIMIZATION: Invalidate distance cache when vendor/address changes
-    _cachedDistance = null;
-    _cachedCustomerLat = null;
-    _cachedCustomerLng = null;
-    _cachedVendorLat = null;
-    _cachedVendorLng = null;
   }
 
   // Add these methods to the CartControllerProvider class:
@@ -4403,12 +3015,6 @@ class CartControllerProvider extends ChangeNotifier {
 
       // 🔑 CRITICAL: Reset address initialization flag when clearing cart
       _addressInitialized = false;
-
-      // Verify cart is actually empty
-      // final remainingItems = await DatabaseHelper.instance.fetchCartProducts();
-      // if (remainingItems.isNotEmpty) {
-      //   debugPrint('[CLEAR_CART] ⚠️ Some items still remain in database');
-      // }
 
       notifyListeners();
     } catch (e) {
@@ -4448,10 +3054,6 @@ class CartControllerProvider extends ChangeNotifier {
               Constant.selectedLocation.zoneId!.isNotEmpty) {
             selectedAddress!.zoneId = Constant.selectedLocation.zoneId;
           }
-
-          _cachedDistance = null;
-          _cachedCustomerLat = null;
-          _cachedCustomerLng = null;
 
           // await initialLiseSurgeValue(homeLat, homeLng);
           await calculatePrice();
@@ -4587,529 +3189,6 @@ class CartControllerProvider extends ChangeNotifier {
       _endOperation('checkPendingPayment');
     }
   }
-
-  // ============ LOAD COUPONS METHOD ============
-  // Prefer the new `GET /api/div/coupons/active` endpoint; fall back to the
-  // legacy mart/restaurant endpoints when it fails or returns nothing.
-  Future<List<CouponModel>> _fetchCouponsForContext({
-    required String restaurantId,
-    String? contextOverride,
-  }) async {
-    final context = contextOverride ?? _currentContext;
-    try {
-      final active = await RestaurantApiHelper.getActiveCoupons().timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          debugPrint('[COUPON_LOAD] ⏱️ Active coupons API call timed out');
-          return <CouponModel>[];
-        },
-      );
-      if (active.isNotEmpty) {
-        debugPrint(
-          '[COUPON_LOAD] ✅ Received ${active.length} active coupons from /div/coupons/active',
-        );
-        return active;
-      }
-      debugPrint(
-        '[COUPON_LOAD] ⚠️ Active coupons API returned empty, falling back to legacy',
-      );
-    } catch (e) {
-      debugPrint(
-        '[COUPON_LOAD] ⚠️ Active coupons API failed: $e, falling back to legacy',
-      );
-    }
-
-    // if (context == "mart") {
-    //   return await RestaurantApiHelper.getMartCoupons(
-    //     restaurantId: restaurantId,
-    //   ).timeout(
-    //     const Duration(seconds: 10),
-    //     onTimeout: () {
-    //       debugPrint('[COUPON_LOAD] ⏱️ Legacy mart coupon API call timed out');
-    //       return <CouponModel>[];
-    //     },
-    //   );
-    // }
-    // return await RestaurantApiHelper.getRestaurantCoupons(
-    //   restaurantId: restaurantId,
-    //   zoneId: Constant.selectedZone!.id.toString(),
-    // ).timeout(
-    //   const Duration(seconds: 10),
-    //   onTimeout: () {
-    //     debugPrint(
-    //       '[COUPON_LOAD] ⏱️ Legacy restaurant coupon API call timed out',
-    //     );
-    return <CouponModel>[];
-    //   },
-    // );
-  }
-
-  // Future<void> _loadCoupons({required String restaurantId}) async {
-  //   if (_isLoadingCoupons) {
-  //     debugPrint(
-  //       '[COUPON_LOAD] ⚠️ Coupon load already in progress, skipping...',
-  //     );
-  //     if (_couponLoadInFlight != null) {
-  //       await _couponLoadInFlight;
-  //     }
-  //     return;
-  //   }
-  //
-  //   if (restaurantId.isEmpty || restaurantId.trim().isEmpty) {
-  //     debugPrint('[COUPON_LOAD] ⚠️ Skipping coupon load: empty restaurant ID');
-  //     await _loadGlobalCouponsOnly();
-  //     return;
-  //   }
-  //
-  //   _isLoadingCoupons = true;
-  //   _startOperation('loadCoupons');
-  //   final couponLoadCompleter = Completer<void>();
-  //   _couponLoadInFlight = couponLoadCompleter.future;
-  //
-  //   try {
-  //     _detectCurrentContext();
-  //     debugPrint(
-  //       '[COUPON_LOAD] 🔍 Loading coupons for vendor: $restaurantId, Context: $_currentContext',
-  //     );
-  //
-  //     final allCoupons = await _fetchCouponsForContext(
-  //       restaurantId: restaurantId,
-  //     );
-  //
-  //     debugPrint(
-  //       '[COUPON_LOAD] ✅ Received ${allCoupons.length} coupons from ${_currentContext} API',
-  //     );
-  //
-  //     final filteredGlobalCoupons = allCoupons
-  //         .where(
-  //           (c) =>
-  //               c.resturantId == null ||
-  //               c.resturantId == '' ||
-  //               c.resturantId?.toUpperCase() == 'ALL',
-  //         )
-  //         .toList();
-  //
-  //     final vendorCoupons = allCoupons
-  //         .where(
-  //           (c) =>
-  //               c.resturantId != null &&
-  //               c.resturantId!.isNotEmpty &&
-  //               c.resturantId!.toUpperCase() != 'ALL' &&
-  //               c.resturantId == restaurantId,
-  //         )
-  //         .toList();
-  //
-  //     final combinedCoupons = [...vendorCoupons, ...filteredGlobalCoupons];
-  //     final combinedAllCoupons = [...allCoupons];
-  //
-  //     final contextFilteredCoupons = CouponFilterService.filterCouponsByContext(
-  //       coupons: combinedCoupons.cast<CouponModel>(),
-  //       contextType: _currentContext,
-  //       fallbackEnabled: true,
-  //     );
-  //
-  //     final contextFilteredAllCoupons =
-  //         CouponFilterService.filterCouponsByContext(
-  //           coupons: combinedAllCoupons.cast<CouponModel>(),
-  //           contextType: _currentContext,
-  //           fallbackEnabled: true,
-  //         );
-  //
-  //     debugPrint(
-  //       '[COUPON_LOAD] ✅ Filtered ${contextFilteredCoupons.length} coupons for context: $_currentContext',
-  //     );
-  //
-  //     _cachedCouponList = contextFilteredCoupons;
-  //     _updateCacheTime();
-  //
-  //     couponList = contextFilteredCoupons;
-  //     allCouponList = contextFilteredAllCoupons;
-  //
-  //     await _markUsedCoupons();
-  //     notifyListeners();
-  //   } on SocketException catch (e) {
-  //     debugPrint('[COUPON_LOAD] ❌ Connection error: $e');
-  //     if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
-  //       couponList = _cachedCouponList!;
-  //       allCouponList = _cachedCouponList!;
-  //       await _markUsedCoupons();
-  //       notifyListeners();
-  //     } else {
-  //       couponList = [];
-  //       allCouponList = [];
-  //       notifyListeners();
-  //     }
-  //   } on http.ClientException catch (e) {
-  //     debugPrint('[COUPON_LOAD] ❌ ClientException: $e');
-  //     if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
-  //       couponList = _cachedCouponList!;
-  //       allCouponList = _cachedCouponList!;
-  //       await _markUsedCoupons();
-  //       notifyListeners();
-  //     } else {
-  //       couponList = [];
-  //       allCouponList = [];
-  //       notifyListeners();
-  //     }
-  //   } catch (e) {
-  //     debugPrint('[COUPON_LOAD] ❌ Error loading coupons: $e');
-  //     final errorString = e.toString();
-  //     if (errorString.contains('429') ||
-  //         errorString.contains('Status code: 429')) {
-  //       debugPrint('[COUPON_LOAD] ⚠️ Rate limit (429) - using cached coupons');
-  //       if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
-  //         couponList = _cachedCouponList!;
-  //         allCouponList = _cachedCouponList!;
-  //         await _markUsedCoupons();
-  //         notifyListeners();
-  //       } else {
-  //         couponList = [];
-  //         allCouponList = [];
-  //         notifyListeners();
-  //       }
-  //     } else {
-  //       await _loadCouponsWithoutFiltering(restaurantId: restaurantId);
-  //       notifyListeners();
-  //     }
-  //   } finally {
-  //     _isLoadingCoupons = false;
-  //     _endOperation('loadCoupons');
-  //     if (!couponLoadCompleter.isCompleted) {
-  //       couponLoadCompleter.complete();
-  //     }
-  //     _couponLoadInFlight = null;
-  //   }
-  // }
-
-  // ============ ADDITIONAL HELPER METHODS ============
-
-  // Add these methods also if they're missing:
-
-  bool _isGlobalCouponCacheValid() {
-    return _lastGlobalCouponCacheTime != null &&
-        DateTime.now().difference(_lastGlobalCouponCacheTime!) <
-            globalCouponCacheExpiry;
-  }
-
-  // Future<void> _loadGlobalCouponsOnly() async {
-  //   if (_isLoadingCoupons) {
-  //     debugPrint(
-  //       '[COUPON_LOAD] ⚠️ Global coupon load already in progress, skipping...',
-  //     );
-  //     if (_couponLoadInFlight != null) {
-  //       await _couponLoadInFlight;
-  //     }
-  //     return;
-  //   }
-  //
-  //   // Cache-first: use cached global coupons if valid (5 min TTL)
-  //   if (_cachedGlobalCouponList != null &&
-  //       _cachedGlobalCouponList!.isNotEmpty &&
-  //       _isGlobalCouponCacheValid()) {
-  //     couponList = _cachedGlobalCouponList!;
-  //     allCouponList = _cachedGlobalCouponList!;
-  //     await _markUsedCoupons();
-  //     notifyListeners();
-  //     return;
-  //   }
-  //
-  //   _isLoadingCoupons = true;
-  //   _startOperation('loadGlobalCoupons');
-  //   final globalCouponLoadCompleter = Completer<void>();
-  //   _couponLoadInFlight = globalCouponLoadCompleter.future;
-  //
-  //   try {
-  //     _detectCurrentContext();
-  //     debugPrint(
-  //       '[COUPON_LOAD] 🔍 Global coupon load - Context: $_currentContext',
-  //     );
-  //
-  //     final globalCoupons = await _fetchCouponsForContext(restaurantId: '');
-  //
-  //     debugPrint(
-  //       '[COUPON_LOAD] ✅ Received ${globalCoupons.length} global coupons from ${_currentContext} API',
-  //     );
-  //
-  //     final filteredGlobalCoupons = globalCoupons
-  //         .where(
-  //           (c) =>
-  //               c.resturantId == null ||
-  //               c.resturantId == '' ||
-  //               c.resturantId?.toUpperCase() == 'ALL',
-  //         )
-  //         .toList();
-  //
-  //     final contextFilteredCoupons = CouponFilterService.filterCouponsByContext(
-  //       coupons: filteredGlobalCoupons.cast<CouponModel>(),
-  //       contextType: _currentContext,
-  //       fallbackEnabled: true,
-  //     );
-  //
-  //     debugPrint(
-  //       '[COUPON_LOAD] ✅ Filtered ${contextFilteredCoupons.length} global coupons for context: $_currentContext',
-  //     );
-  //
-  //     _cachedCouponList = contextFilteredCoupons;
-  //     _cachedGlobalCouponList = contextFilteredCoupons;
-  //     _lastGlobalCouponCacheTime = DateTime.now();
-  //     _updateCacheTime();
-  //
-  //     couponList = contextFilteredCoupons;
-  //     allCouponList = filteredGlobalCoupons.cast<CouponModel>();
-  //
-  //     await _markUsedCoupons();
-  //     notifyListeners();
-  //   } on SocketException catch (e) {
-  //     debugPrint('[COUPON_LOAD] ❌ Global: Connection error: $e');
-  //     if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
-  //       couponList = _cachedCouponList!;
-  //       allCouponList = _cachedCouponList!;
-  //       await _markUsedCoupons();
-  //       notifyListeners();
-  //     } else {
-  //       couponList = [];
-  //       allCouponList = [];
-  //       notifyListeners();
-  //     }
-  //   } on http.ClientException catch (e) {
-  //     debugPrint('[COUPON_LOAD] ❌ Global: ClientException: $e');
-  //     if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
-  //       couponList = _cachedCouponList!;
-  //       allCouponList = _cachedCouponList!;
-  //       await _markUsedCoupons();
-  //       notifyListeners();
-  //     } else {
-  //       couponList = [];
-  //       allCouponList = [];
-  //       notifyListeners();
-  //     }
-  //   } catch (e) {
-  //     debugPrint('[COUPON_LOAD] ❌ Error loading global coupons: $e');
-  //     final errorString = e.toString();
-  //     if (errorString.contains('429') ||
-  //         errorString.contains('400') ||
-  //         errorString.contains('Status code: 429') ||
-  //         errorString.contains('Status code: 400')) {
-  //       debugPrint(
-  //         '[COUPON_LOAD] ⚠️ Global: Rate limit or bad request - using cached coupons',
-  //       );
-  //       if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
-  //         couponList = _cachedCouponList!;
-  //         allCouponList = _cachedCouponList!;
-  //         await _markUsedCoupons();
-  //         notifyListeners();
-  //       } else {
-  //         couponList = [];
-  //         allCouponList = [];
-  //         notifyListeners();
-  //       }
-  //     } else {
-  //       if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
-  //         couponList = _cachedCouponList!;
-  //         allCouponList = _cachedCouponList!;
-  //         await _markUsedCoupons();
-  //         notifyListeners();
-  //       }
-  //     }
-  //   } finally {
-  //     _isLoadingCoupons = false;
-  //     _endOperation('loadGlobalCoupons');
-  //     if (!globalCouponLoadCompleter.isCompleted) {
-  //       globalCouponLoadCompleter.complete();
-  //     }
-  //     _couponLoadInFlight = null;
-  //   }
-  // }
-
-  // Future<void> _loadCouponsWithoutFiltering({
-  //   required String restaurantId,
-  // }) async {
-  //   if (_isLoadingCoupons) {
-  //     debugPrint(
-  //       '[COUPON_LOAD] ⚠️ Fallback coupon load already in progress, skipping...',
-  //     );
-  //     return;
-  //   }
-  //
-  //   if (restaurantId.isEmpty || restaurantId.trim().isEmpty) {
-  //     debugPrint('[COUPON_LOAD] ⚠️ Fallback: Skipping - empty restaurant ID');
-  //     if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
-  //       couponList = _cachedCouponList!;
-  //       allCouponList = _cachedCouponList!;
-  //       notifyListeners();
-  //     } else {
-  //       couponList = [];
-  //       allCouponList = [];
-  //       notifyListeners();
-  //     }
-  //     return;
-  //   }
-  //
-  //   _isLoadingCoupons = true;
-  //   _startOperation('loadCouponsWithoutFiltering');
-  //
-  //   try {
-  //     _detectCurrentContext();
-  //     debugPrint(
-  //       '[COUPON_LOAD] 🔍 Fallback: Loading coupons for vendor: $restaurantId, Context: $_currentContext',
-  //     );
-  //
-  //     final List<CouponModel> allCoupons = await _fetchCouponsForContext(
-  //       restaurantId: restaurantId,
-  //     );
-  //
-  //     debugPrint(
-  //       '[COUPON_LOAD] ✅ Fallback: Received ${allCoupons.length} coupons from ${_currentContext} API',
-  //     );
-  //
-  //     final filteredGlobalCoupons = allCoupons
-  //         .where(
-  //           (c) =>
-  //               c.resturantId == null ||
-  //               c.resturantId == '' ||
-  //               c.resturantId?.toUpperCase() == 'ALL',
-  //         )
-  //         .toList();
-  //
-  //     final vendorCoupons = allCoupons
-  //         .where(
-  //           (c) =>
-  //               c.resturantId != null &&
-  //               c.resturantId!.isNotEmpty &&
-  //               c.resturantId!.toUpperCase() != 'ALL' &&
-  //               c.resturantId == restaurantId,
-  //         )
-  //         .toList();
-  //
-  //     final combinedCoupons = [...vendorCoupons, ...filteredGlobalCoupons];
-  //     final combinedAllCoupons = [...allCoupons];
-  //
-  //     _cachedCouponList = combinedCoupons.cast<CouponModel>();
-  //     _updateCacheTime();
-  //
-  //     couponList = combinedCoupons.cast<CouponModel>();
-  //     allCouponList = combinedAllCoupons.cast<CouponModel>();
-  //
-  //     // await _markUsedCoupons();
-  //     notifyListeners();
-  //   } on SocketException catch (e) {
-  //     debugPrint('[COUPON_LOAD] ❌ Fallback: Connection error: $e');
-  //     if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
-  //       couponList = _cachedCouponList!;
-  //       allCouponList = _cachedCouponList!;
-  //       // await _markUsedCoupons();
-  //       notifyListeners();
-  //     } else {
-  //       couponList = [];
-  //       allCouponList = [];
-  //       notifyListeners();
-  //     }
-  //   } on http.ClientException catch (e) {
-  //     debugPrint('[COUPON_LOAD] ❌ Fallback: ClientException: $e');
-  //     if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
-  //       couponList = _cachedCouponList!;
-  //       allCouponList = _cachedCouponList!;
-  //       // await _markUsedCoupons();
-  //       notifyListeners();
-  //     } else {
-  //       couponList = [];
-  //       allCouponList = [];
-  //       notifyListeners();
-  //     }
-  //   } catch (e) {
-  //     debugPrint('[COUPON_LOAD] ❌ Fallback coupon loading also failed: $e');
-  //     final errorString = e.toString();
-  //     if (errorString.contains('429') ||
-  //         errorString.contains('Status code: 429')) {
-  //       debugPrint(
-  //         '[COUPON_LOAD] ⚠️ Fallback: Rate limit (429) - using cached coupons',
-  //       );
-  //       if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
-  //         couponList = _cachedCouponList!;
-  //         allCouponList = _cachedCouponList!;
-  //         // await _markUsedCoupons();
-  //         notifyListeners();
-  //       } else {
-  //         couponList = [];
-  //         allCouponList = [];
-  //         notifyListeners();
-  //       }
-  //     } else {
-  //       if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
-  //         couponList = _cachedCouponList!;
-  //         allCouponList = _cachedCouponList!;
-  //         // await _markUsedCoupons();
-  //         notifyListeners();
-  //       } else {
-  //         couponList = [];
-  //         allCouponList = [];
-  //         notifyListeners();
-  //       }
-  //     }
-  //   } finally {
-  //     _isLoadingCoupons = false;
-  //     _endOperation('loadCouponsWithoutFiltering');
-  //   }
-  // }
-
-  // Future<void> _markUsedCoupons({bool notify = true}) async {
-  //   if (_markUsedCouponsInFlight != null) {
-  //     await _markUsedCouponsInFlight!;
-  //     if (notify) notifyListeners();
-  //     return;
-  //   }
-  //
-  //   final canUseCache =
-  //       _lastUsedCouponsFetchAt != null &&
-  //       DateTime.now().difference(_lastUsedCouponsFetchAt!) <
-  //           _usedCouponsCacheExpiry;
-  //   if (canUseCache) {
-  //     _applyUsedCouponIds(_cachedUsedCouponIds);
-  //     if (notify) notifyListeners();
-  //     return;
-  //   }
-  //
-  //   _markUsedCouponsInFlight = () async {
-  //     try {
-  //       final userId = await SqlStorageConst.getFirebaseId();
-  //       final response = await http.get(
-  //         Uri.parse('${AppConst.baseUrl}mobile/coupons/used?userId=$userId'),
-  //         headers: await getHeaders(),
-  //       );
-  //
-  //       if (response.statusCode == 200) {
-  //         final Map<String, dynamic> responseData = json.decode(response.body);
-  //         if (responseData['success'] == true) {
-  //           final List<dynamic> usedCoupons = responseData['data']['coupons'];
-  //           _cachedUsedCouponIds = usedCoupons
-  //               .map((coupon) => coupon['couponId']?.toString() ?? '')
-  //               .where((id) => id.isNotEmpty)
-  //               .toSet();
-  //           _lastUsedCouponsFetchAt = DateTime.now();
-  //         }
-  //       }
-  //     } catch (e) {
-  //       debugPrint('[MARK_USED_COUPONS] ❌ Error: $e');
-  //     } finally {
-  //       _markUsedCouponsInFlight = null;
-  //     }
-  //   }();
-  //
-  //   await _markUsedCouponsInFlight!;
-  //   _applyUsedCouponIds(_cachedUsedCouponIds);
-  //   if (notify) notifyListeners();
-  // }
-
-  void _applyUsedCouponIds(Set<String> usedCouponIds) {
-    for (final coupon in couponList) {
-      coupon.isEnabled = !usedCouponIds.contains(coupon.id);
-    }
-    for (final coupon in allCouponList) {
-      coupon.isEnabled = !usedCouponIds.contains(coupon.id);
-    }
-  }
-
-  // ============ PAYMENT HELPER METHODS ============
 
   void _resetPaymentState() {
     isPaymentInProgress = false;
@@ -5563,21 +3642,6 @@ class CartControllerProvider extends ChangeNotifier {
     return isAllowed;
   }
 
-  // Add this if it's missing
-  // Future<void> initialLiseSurgeValue(double lat, double lon) async {
-  //   try {
-  //     Map<String, dynamic> weather = await getWeather(lat, lon);
-  //     // Map<String, dynamic> rules = await getSurgeRules();
-  //     // surgePercent = calculateSurgeFee(weather, rules);
-  //     notifyListeners();
-  //   } catch (e) {
-  //     debugPrint('[SURGE_VALUE] ❌ Error: $e');
-  //     surgePercent = 0;
-  //     notifyListeners();
-  //   }
-  // }
-
-  // Add this if it's missing
   Future<Map<String, dynamic>> getWeather(double lat, double lon) async {
     const apiKey = "7885eed00855633516f769cf3646aace";
     final url =
@@ -5590,36 +3654,6 @@ class CartControllerProvider extends ChangeNotifier {
     }
   }
 
-  // Add this if it's missing
-  // Future<Map<String, dynamic>> getSurgeRules() async {
-  //   try {
-  //     final response = await http
-  //         .get(
-  //           Uri.parse('${AppConst.baseUrl}mobile/surge-rules'),
-  //           headers: await getHeaders(),
-  //         )
-  //         .timeout(const Duration(seconds: 10));
-  //
-  //     if (response.statusCode == 200) {
-  //       final Map<String, dynamic> responseData = json.decode(response.body);
-  //       if (responseData['success'] == true) {
-  //         return responseData['data'] ?? {};
-  //       } else {
-  //         return {};
-  //       }
-  //     } else if (response.statusCode == 429) {
-  //       return {};
-  //     } else {
-  //       return {};
-  //     }
-  //   } on TimeoutException {
-  //     return {};
-  //   } catch (e) {
-  //     return {};
-  //   }
-  // }
-
-  // Add this if it's missing
   double calculateSurgeFee(
     Map<String, dynamic> weather,
     Map<String, dynamic> rules,
@@ -5636,9 +3670,6 @@ class CartControllerProvider extends ChangeNotifier {
   Future<void> _loadFreshVendorForCart() async {
     try {
       // 🔑 OPTIMIZATION: Invalidate distance cache when vendor changes
-      _cachedDistance = null;
-      _cachedVendorLat = null;
-      _cachedVendorLng = null;
 
       final martItems = HomeProvider.cartItem
           .where((item) => _isMartItem(item))
@@ -5985,55 +4016,6 @@ class CartControllerProvider extends ChangeNotifier {
   //   );
   // }
 
-  void _calculateDeliveryCharge({
-    required String orderType,
-    required double freeDeliveryKm,
-    required double perKmCharge,
-    required double baseCharge,
-    required String logPrefix,
-    bool includeBaseChargeInOriginalFee =
-        true, // 🔑 NEW: Flag to control base charge inclusion
-  }) {
-    if (vendorModel.isSelfDelivery == true &&
-        Constant.isSelfDeliveryFeature == true) {
-      deliveryCharges = 0.0;
-      originalDeliveryFee = 0.0;
-    } else if (totalDistance <= freeDeliveryKm) {
-      // Free delivery within promotional distance
-      deliveryCharges = 0.0;
-      // 🔑 FIX: For promotional items, ALWAYS include base charge in originalDeliveryFee for GST calculation
-      // Even though customer pays 0, GST should be calculated on base charge
-      if (orderType == 'promotional') {
-        originalDeliveryFee =
-            baseCharge; // Always include base charge for tax calculation
-      } else {
-        originalDeliveryFee = baseCharge;
-      }
-      debugPrint(
-        '$logPrefix Free delivery within ${freeDeliveryKm}km - Customer pays: ₹$deliveryCharges, Base charge for GST: ₹$baseCharge',
-      );
-    } else {
-      // Distance exceeds free delivery km - charge extra km only
-      double extraKm = (totalDistance - freeDeliveryKm).ceilToDouble();
-      deliveryCharges = extraKm * perKmCharge;
-
-      // 🔑 FIX: For promotional items, ALWAYS include base charge in originalDeliveryFee for GST calculation
-      // The flag controls whether base charge is "free up" for customer, but it should always be in originalFee for tax
-      if (orderType == 'promotional') {
-        // Always include base charge for promotional items (for 18% GST calculation)
-        originalDeliveryFee = baseCharge + deliveryCharges;
-      } else {
-        // For non-promotional, use the flag
-        originalDeliveryFee = includeBaseChargeInOriginalFee
-            ? baseCharge + deliveryCharges
-            : deliveryCharges;
-      }
-      debugPrint(
-        '$logPrefix Distance ${totalDistance}km exceeds free ${freeDeliveryKm}km - Extra km: $extraKm, Customer pays: ₹$deliveryCharges, Original fee (base + extra) for GST: ₹$originalDeliveryFee',
-      );
-    }
-  }
-
   void calculateMartDeliveryCharge() {
     final martItems = HomeProvider.cartItem
         .where((item) => _isMartItem(item))
@@ -6148,60 +4130,6 @@ class CartControllerProvider extends ChangeNotifier {
     }
   }
 
-  double _getCachedFreeDeliveryKm(String productId, String restaurantId) {
-    final cacheKey = '$productId-$restaurantId';
-
-    // 🔑 CRITICAL FIX: For promotional items, ALWAYS prioritize promotion cache
-    // First check cached value (from promotion table)
-    if (_cachedFreeDeliveryKm.containsKey(cacheKey)) {
-      return _cachedFreeDeliveryKm[cacheKey]!;
-    }
-
-    // If not in cached map, check promotion cache directly
-    final promoDetails = _promotionalCalculationCache[cacheKey];
-    if (promoDetails != null) {
-      final freeKm = (promoDetails['free_delivery_km'] as num?)?.toDouble();
-      if (freeKm != null && freeKm > 0) {
-        // Cache it for next time
-        _cachedFreeDeliveryKm[cacheKey] = freeKm;
-        debugPrint(
-          '[PROMOTIONAL_DELIVERY] ✅ Retrieved free delivery km from promotion cache: $freeKm km',
-        );
-        return freeKm;
-      }
-    }
-
-    // 🔑 CRITICAL: Check if this is a promotional item - if so, NEVER use global fallback
-    // Check if item has promoId in cart
-    final isPromotionalItem = HomeProvider.cartItem.any(
-      (item) =>
-          item.id == productId &&
-          item.vendorID == restaurantId &&
-          item.promoId != null &&
-          item.promoId!.isNotEmpty,
-    );
-
-    if (isPromotionalItem) {
-      // 🔑 CRITICAL: For promotional items, use promotional default (4km) instead of global
-      // This ensures promotional items always use promotional delivery charges
-      debugPrint(
-        '[PROMOTIONAL_DELIVERY] ⚠️ Promotional item cache not loaded, using promotional default: 4.0 km',
-      );
-      return 4.0; // Promotional default, NOT global fallback
-    }
-
-    // Only use global fallback for non-promotional items
-    final globalFreeKm =
-        deliveryChargeModel.freeDeliveryDistanceKm?.toDouble() ??
-        DeliveryChargeCache.instance.getFreeDeliveryDistanceKm(fallback: 7.0);
-    return globalFreeKm;
-  }
-
-  double _getCachedExtraKmCharge(String productId, String restaurantId) {
-    final cacheKey = '$productId-$restaurantId';
-    return _cachedExtraKmCharge[cacheKey] ?? 7.0;
-  }
-
   // Future<void> _loadCalculationCache() async {
   //   if (_calculationCacheLoaded) return;
   //
@@ -6232,70 +4160,16 @@ class CartControllerProvider extends ChangeNotifier {
   // }
 
   set isGlobalLocked(bool value) {
-    _isGlobalLocked = value;
     notifyListeners();
   }
 
   void _lockGlobal() {
-    _isGlobalLocked = true;
     notifyListeners();
   }
 
   void _unlockGlobal() {
-    _isGlobalLocked = false;
     notifyListeners();
   }
-
-  // Future<void> _cachePromotionalData(
-  //   String productId,
-  //   String restaurantId,
-  //   String cacheKey,
-  // ) async {
-  //   try {
-  //     final promoDetails = await FireStoreUtils.getActivePromotionForProduct(
-  //       productId: productId,
-  //       restaurantId: restaurantId,
-  //     );
-  //
-  //     if (promoDetails != null) {
-  //       _promotionalCalculationCache[cacheKey] = promoDetails;
-  //
-  //       // 🔑 CRITICAL FIX: For promotional items, use promotional free_delivery_km from table
-  //       // If null, don't default to 3.0 - use promotional default (4.0) or fetch it
-  //       final promoFreeKm = (promoDetails['free_delivery_km'] as num?)
-  //           ?.toDouble();
-  //       final freeDeliveryKm =
-  //           promoFreeKm ?? 4.0; // 🔑 Use 4.0 as promotional default, not 3.0
-  //
-  //       final extraKmCharge =
-  //           (promoDetails['extra_km_charge'] as num?)?.toDouble() ?? 7.0;
-  //       // 🔑 DYNAMIC: Get base charge from cache, with fallback from promo details if available
-  //       final promoBaseCharge =
-  //           (promoDetails['base_delivery_charge'] as num?)?.toDouble() ??
-  //           DeliveryChargeCache.instance.getBaseDeliveryCharge(fallback: 21.0);
-  //
-  //       // 🔑 NEW: Check if promotional item should include base charge in "free up" calculation
-  //       // Some promotions consider base charge, some don't - check flag if available
-  //       final includeBaseCharge =
-  //           promoDetails['include_base_charge'] == true ||
-  //           promoDetails['consider_base_charge'] == true ||
-  //           promoDetails['free_up_charge'] ==
-  //               true; // Default to true if not specified
-  //
-  //       _cachedFreeDeliveryKm[cacheKey] = freeDeliveryKm;
-  //       _cachedExtraKmCharge[cacheKey] = extraKmCharge;
-  //       // 🔑 DYNAMIC: Store base charge in cache for promotional items
-  //       _cachedPromotionalBaseCharge[cacheKey] = promoBaseCharge;
-  //       // 🔑 NEW: Store flag for whether to include base charge
-  //       _promotionalCalculationCache[cacheKey]?['include_base_charge'] =
-  //           includeBaseCharge;
-  //     }
-  //   } catch (e) {
-  //     debugPrint('[PROMO_CACHE] ❌ Error: $e');
-  //   }
-  // }
-
-  // ============ CART ITEM OPERATIONS ============
 
   int? _resolveNumericProductId(CartProductModel cartProductModel) {
     final raw = cartProductModel.id?.split('~').first.trim() ?? '';
@@ -6432,61 +4306,6 @@ class CartControllerProvider extends ChangeNotifier {
     }
   }
 
-  // Future<void> _loadNewProductsIncrementally() async {
-  //   try {
-  //     final Set<String> productIds = {};
-  //
-  //     for (final cartItem in HomeProvider.cartItem) {
-  //       if (cartItem.id != null &&
-  //           cartItem.id!.isNotEmpty &&
-  //           cartItem.id!.toLowerCase() != 'null') {
-  //         final parts = cartItem.id!.split('~');
-  //         if (parts.isNotEmpty &&
-  //             parts.first.isNotEmpty &&
-  //             parts.first.toLowerCase() != 'null') {
-  //           productIds.add(parts.first);
-  //         }
-  //       }
-  //     }
-  //
-  //     final Set<String> productsToLoad = productIds
-  //         .where((id) => !_productCache.containsKey(id))
-  //         .toSet();
-  //
-  //     if (productsToLoad.isEmpty) return;
-  //
-  //     final List<Future<void>> loadFutures = productsToLoad.map((
-  //       productId,
-  //     ) async {
-  //       try {
-  //         final isMartItem = _isMartItem(
-  //           HomeProvider.cartItem.firstWhere(
-  //             (item) => item.id?.split('~').first == productId,
-  //             orElse: () => CartProductModel(),
-  //           ),
-  //         );
-  //
-  //         if (isMartItem) {
-  //           _productCache[productId] = null;
-  //         } else {
-  //           final product = await FireStoreUtils.getProductById(productId);
-  //           _productCache[productId] = product;
-  //         }
-  //         notifyListeners();
-  //       } catch (e) {
-  //         debugPrint('[INCREMENTAL_LOAD] ❌ Error: $e');
-  //         _productCache[productId] = null;
-  //       }
-  //     }).toList();
-  //
-  //     await Future.wait(loadFutures);
-  //     _productsLoaded = true;
-  //     notifyListeners();
-  //   } catch (e) {
-  //     debugPrint('[INCREMENTAL_LOAD] ❌ Error: $e');
-  //   }
-  // }
-
   void _showLoginRequiredDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -6514,109 +4333,6 @@ class CartControllerProvider extends ChangeNotifier {
       },
     );
   }
-
-  // ============ VALIDATION METHODS ============
-
-  // Future<bool> validateAndPlaceOrderBulletproof(BuildContext context) async {
-  //   debugPrint('🟡 [ORDER VALIDATION] Started');
-  //
-  //   // 1. Validate user profile
-  //   debugPrint('🟡 [ORDER VALIDATION] Validating user profile...');
-  //   await validateUserProfileBulletproof();
-  //
-  //   debugPrint('🟡 [ORDER VALIDATION] Profile valid: $isProfileValid');
-  //
-  //   if (!isProfileValid) {
-  //     final user = userModel;
-  //     List<String> missingFields = [];
-  //
-  //     if (user.firstName == null ||
-  //         user.firstName!.trim().isEmpty ||
-  //         user.firstName!.trim().length < 2) {
-  //       missingFields.add("First Name (minimum 2 characters)");
-  //     }
-  //
-  //     if (user.phoneNumber == null ||
-  //         user.phoneNumber!.trim().isEmpty ||
-  //         user.phoneNumber!.trim().length < 10) {
-  //       missingFields.add("Phone Number (minimum 10 digits)");
-  //     }
-  //
-  //     // if (user.email == null ||
-  //     //     user.email!.trim().isEmpty ||
-  //     //     !user.email!.contains('@')) {
-  //     //   missingFields.add("Valid Email Address");
-  //     // }
-  //
-  //     debugPrint('🔴 [ORDER VALIDATION] Profile validation FAILED');
-  //     debugPrint('🔴 [ORDER VALIDATION] Missing fields: $missingFields');
-  //
-  //     String message = "Please complete your profile before placing an order.";
-  //
-  //     if (missingFields.isNotEmpty) {
-  //       message =
-  //           "Missing required fields: ${missingFields.join(', ')}. "
-  //           "Please complete your profile.";
-  //     }
-  //
-  //     debugPrint('🔴 [ORDER VALIDATION] Message: $message');
-  //
-  //     ShowToastDialog.showToast(message);
-  //     return false;
-  //   }
-  //
-  //   debugPrint('🟢 [ORDER VALIDATION] Profile validation PASSED');
-  //
-  //   // 2. Validate address
-  //   debugPrint('🟡 [ORDER VALIDATION] Validating address...');
-  //
-  //   final addressValid = await _validateAddressBulletproof(context);
-  //
-  //   debugPrint('🟡 [ORDER VALIDATION] Address valid: $addressValid');
-  //
-  //   if (!addressValid) {
-  //     debugPrint('🔴 [ORDER VALIDATION] Address validation FAILED');
-  //     return false;
-  //   }
-  //
-  //   debugPrint('🟢 [ORDER VALIDATION] Address validation PASSED');
-  //
-  //   // 3. Validate minimum order value
-  //   debugPrint('🟡 [ORDER VALIDATION] Validating minimum order value...');
-  //
-  //   try {
-  //     await validateMinimumOrderValue();
-  //
-  //     debugPrint('🟢 [ORDER VALIDATION] Minimum order value validation PASSED');
-  //   } catch (e, stackTrace) {
-  //     debugPrint(
-  //       '🔴 [ORDER VALIDATION] Minimum order value validation FAILED: $e',
-  //     );
-  //     debugPrint('🔴 [ORDER VALIDATION] StackTrace: $stackTrace');
-  //
-  //     return false;
-  //   }
-  //
-  //   // 4. Validate vendor open status
-  //   debugPrint('🟡 [ORDER VALIDATION] Validating vendor open status...');
-  //
-  //   final isVendorOpen = await _validateVendorOpenForOrdering();
-  //
-  //   debugPrint('🟡 [ORDER VALIDATION] Vendor open: $isVendorOpen');
-  //
-  //   if (!isVendorOpen) {
-  //     debugPrint('🔴 [ORDER VALIDATION] Vendor open validation FAILED');
-  //     return false;
-  //   }
-  //
-  //   debugPrint('🟢 [ORDER VALIDATION] Vendor open validation PASSED');
-  //
-  //   debugPrint(
-  //     '🟢 [ORDER VALIDATION] ALL VALIDATIONS PASSED - Ready to place order',
-  //   );
-  //
-  //   return true;
-  // }
 
   Future<bool> _validateVendorOpenForOrdering() async {
     try {
@@ -6649,323 +4365,6 @@ class CartControllerProvider extends ChangeNotifier {
       return true;
     }
   }
-
-  Future<bool> _validateAddressBulletproof(
-    BuildContext context, {
-    bool isRetry = false,
-  }) async {
-    try {
-      if (!isRetry &&
-          (selectedAddress == null ||
-              selectedAddress!.location?.latitude == null ||
-              selectedAddress!.location?.longitude == null ||
-              selectedAddress!.location!.latitude == 0.0 ||
-              selectedAddress!.location!.longitude == 0.0 ||
-              selectedAddress!.address == null ||
-              selectedAddress!.address!.isEmpty ||
-              selectedAddress!.address == 'Current Location')) {
-        final homeScreenAddress = await _getCurrentLocationAddress(context);
-        if (homeScreenAddress != null) {
-          selectedAddress = homeScreenAddress;
-        }
-      }
-
-      if (selectedAddress == null) {
-        ShowToastDialog.showToast(
-          "Delivery address is required. Please add an address to continue.".tr,
-        );
-        Get.to(() => const AddressListScreen());
-        return false;
-      }
-
-      final address = selectedAddress!;
-
-      if (address.id == null || address.id!.trim().isEmpty) {
-        ShowToastDialog.showToast(
-          "Invalid address detected. Please select a valid delivery address."
-              .tr,
-        );
-        Get.to(() => const AddressListScreen());
-        return false;
-      }
-
-      if (address.address == null ||
-          address.address!.trim().isEmpty ||
-          address.address!.trim() == 'null') {
-        ShowToastDialog.showToast(
-          "Please select a valid delivery address with complete address details."
-              .tr,
-        );
-        Get.to(() => const AddressListScreen());
-        return false;
-      }
-
-      if (address.locality == null ||
-          address.locality!.trim().isEmpty ||
-          address.locality!.trim() == 'null') {
-        ShowToastDialog.showToast(
-          "Please select a valid delivery address with complete location details."
-              .tr,
-        );
-        Get.to(() => const AddressListScreen());
-        return false;
-      }
-
-      if (address.location == null ||
-          address.location!.latitude == null ||
-          address.location!.longitude == null ||
-          address.location!.latitude == 0.0 ||
-          address.location!.longitude == 0.0) {
-        if (!isRetry) {
-          final homeScreenAddress = await _getCurrentLocationAddress(context);
-          if (homeScreenAddress != null &&
-              homeScreenAddress.location?.latitude != null &&
-              homeScreenAddress.location?.longitude != null) {
-            selectedAddress = homeScreenAddress;
-            return await _validateAddressBulletproof(context, isRetry: true);
-          }
-        }
-
-        ShowToastDialog.showToast(
-          "Please select a delivery address with valid location coordinates."
-              .tr,
-        );
-        Get.to(() => const AddressListScreen());
-        return false;
-      }
-
-      if (address.id!.startsWith('fallback_zone_') ||
-          address.address == 'Ongole' ||
-          address.address == 'Service Area' ||
-          address.locality == 'Ongole' ||
-          address.locality == 'Service Area' ||
-          address.id!.contains('ongole_fallback_zone')) {
-        ShowToastDialog.showToast(
-          "Please add a valid delivery address. Fallback zones are not allowed."
-              .tr,
-        );
-        Get.to(() => const AddressListScreen());
-        return false;
-      }
-
-      final lat = address.location!.latitude!;
-      final lng = address.location!.longitude!;
-
-      if (lat < 6.0 || lat > 37.0 || lng < 68.0 || lng > 97.0) {
-        DeliveryZoneAlertDialog.showZoneMismatchError();
-        return false;
-      }
-
-      if (address.zoneId == null || address.zoneId!.isEmpty) {
-        String? detectedZoneId;
-
-        if (Constant.selectedLocation.zoneId != null &&
-            Constant.selectedLocation.zoneId!.isNotEmpty) {
-          detectedZoneId = Constant.selectedLocation.zoneId;
-        } else if (Constant.selectedZone?.id != null &&
-            Constant.selectedZone!.id!.isNotEmpty) {
-          detectedZoneId = Constant.selectedZone!.id;
-        } else {
-          detectedZoneId = await _detectZoneIdForCoordinates(
-            address.location!.latitude!,
-            address.location!.longitude!,
-            context,
-          );
-        }
-
-        if (detectedZoneId != null && detectedZoneId.isNotEmpty) {
-          address.zoneId = detectedZoneId;
-          Constant.selectedLocation.zoneId = detectedZoneId;
-        } else {
-          DeliveryZoneAlertDialog.showZoneValidationWarning();
-          return false;
-        }
-      }
-
-      if (vendorModel.zoneId == null || vendorModel.zoneId!.isEmpty) {
-        if (vendorModel.id != null) {
-          final hasMartItems = HomeProvider.cartItem.any(
-            (item) => item.vendorID?.startsWith('mart_') == true,
-          );
-
-          if (hasMartItems) {
-            try {
-              final vendorId = vendorModel.id;
-              MartVendorModel? martVendor;
-
-              if (vendorId != null && vendorId.isNotEmpty) {
-                martVendor = await MartVendorService.getMartVendorById(
-                  vendorId,
-                );
-              }
-              martVendor ??= await MartVendorService.getDefaultMartVendor();
-
-              if (martVendor != null &&
-                  martVendor.zoneId != null &&
-                  martVendor.zoneId!.isNotEmpty) {
-                vendorModel.zoneId = martVendor.zoneId;
-              } else if (address.zoneId != null && address.zoneId!.isNotEmpty) {
-                vendorModel.zoneId = address.zoneId;
-              }
-            } catch (e) {
-              debugPrint('[VENDOR_ZONE] ❌ Error: $e');
-            }
-          }
-        }
-
-        if ((vendorModel.zoneId == null || vendorModel.zoneId!.isEmpty) &&
-            address.zoneId != null &&
-            address.zoneId!.isNotEmpty) {
-          vendorModel.zoneId = address.zoneId;
-        } else if ((vendorModel.zoneId == null ||
-                vendorModel.zoneId!.isEmpty) &&
-            Constant.selectedLocation.zoneId != null &&
-            Constant.selectedLocation.zoneId!.isNotEmpty) {
-          vendorModel.zoneId = Constant.selectedLocation.zoneId;
-        } else if ((vendorModel.zoneId == null ||
-                vendorModel.zoneId!.isEmpty) &&
-            Constant.selectedZone?.id != null &&
-            Constant.selectedZone!.id!.isNotEmpty) {
-          vendorModel.zoneId = Constant.selectedZone!.id;
-        }
-
-        if (vendorModel.zoneId == null || vendorModel.zoneId!.isEmpty) {
-          ShowToastDialog.showToast(
-            "Vendor zone not configured. Please contact support.".tr,
-          );
-          return false;
-        }
-      }
-
-      // if (address.zoneId != vendorModel.zoneId) {
-      //   DeliveryZoneAlertDialog.showZoneMismatchError();
-      //   return false;
-      // }
-      //
-      // if (vendorModel.latitude != null && vendorModel.longitude != null) {
-      //   final distance = Constant.calculateDistance(
-      //     address.location!.latitude!,
-      //     address.location!.longitude!,
-      //     vendorModel.latitude!,
-      //     vendorModel.longitude!,
-      //   );
-      //
-      //   const maxDeliveryDistance = 16.0;
-      //
-      //   if (distance > maxDeliveryDistance) {
-      //     DeliveryZoneAlertDialog.showDistanceTooFarError();
-      //     return false;
-      //   }
-      // }
-
-      return true;
-    } catch (e) {
-      ShowToastDialog.showToast(
-        "Error validating address. Please select a valid delivery address.".tr,
-      );
-
-      Get.to(() => const AddressListScreen());
-      return false;
-    }
-  }
-
-  //   Future<void> rollbackFailedOrder(
-  //     String orderId,
-  //     List<CartProductModel> products,
-  //   ) async {
-  //     try {
-  //       // Prepare the request body
-  //       final Map<String, dynamic> requestBody = {
-  //         "order_id": orderId,
-  //         "products": products
-  //             .map((product) => {"id": product.id, "quantity": product.quantity})
-  //             .toList(),
-  //       };
-  //       final response = await http.post(
-  //         Uri.parse('${AppConst.baseUrl}/mobile/orders/rollback-failed'),
-  //         headers: await getHeaders(),
-  //         body: jsonEncode(requestBody),
-  //       );
-  //       if (response.statusCode == 200) {
-  //         debugPrint('Order rollback successful for order: $orderId');
-  //         notifyListeners();
-  //       } else {
-  //         // Handle API error
-  //         debugPrint('Failed to rollback order: ${response.statusCode}');
-  //         throw Exception('Failed to rollback order: ${response.statusCode}');
-  //       }
-  //     } catch (e) {
-  //       debugPrint('Error rolling back order: $e');
-  //       // Re-throw the exception or handle it as needed
-  //       rethrow;
-  //     }
-  //   }
-  // ============ PAYMENT METHODS ============
-
-  // Future<void> getPaymentSettings() async {
-  //   try {
-  //     await FireStoreUtils.getPaymentSettingsData()
-  //         .then((value) {
-  //           try {
-  //             final razorpaySettingsStr = Preferences.getString(
-  //               Preferences.razorpaySettings,
-  //             );
-  //             final codSettingsStr = Preferences.getString(
-  //               Preferences.codSettings,
-  //             );
-  //
-  //             if (razorpaySettingsStr.isNotEmpty) {
-  //               razorPayModel = RazorPayModel.fromJson(
-  //                 jsonDecode(razorpaySettingsStr),
-  //               );
-  //             }
-  //
-  //             if (codSettingsStr.isNotEmpty) {
-  //               cashOnDeliverySettingModel = CodSettingModel.fromJson(
-  //                 jsonDecode(codSettingsStr),
-  //               );
-  //             }
-  //
-  //             if (selectedPaymentMethod == PaymentGateway.cod.name &&
-  //                 cashOnDeliverySettingModel.isEnabled != true) {
-  //               selectedPaymentMethod = '';
-  //             }
-  //
-  //             if (cashOnDeliverySettingModel.isEnabled == true &&
-  //                 subTotal <= cashOnDeliverySettingModel.getMaxAmount() &&
-  //                 !hasMartItemsInCart()) {
-  //               selectedPaymentMethod = PaymentGateway.cod.name;
-  //             } else if (razorPayModel.isEnabled == true) {
-  //               selectedPaymentMethod = PaymentGateway.razorpay.name;
-  //             }
-  //
-  //             if (razorPayModel.isEnabled == true &&
-  //                 razorPayModel.razorpayKey != null &&
-  //                 razorPayModel.razorpayKey!.isNotEmpty) {
-  //               _preInitializeRazorpay();
-  //             }
-  //
-  //             checkAndUpdatePaymentMethod();
-  //           } catch (e) {
-  //             debugPrint('[PAYMENT_SETTINGS] ❌ Error parsing: $e');
-  //             if (razorPayModel.isEnabled == true) {
-  //               selectedPaymentMethod = PaymentGateway.razorpay.name;
-  //               _preInitializeRazorpay();
-  //             }
-  //           }
-  //         })
-  //         .catchError((e) {
-  //           debugPrint('[PAYMENT_SETTINGS] ❌ Error fetching: $e');
-  //           if (razorPayModel.isEnabled == true) {
-  //             selectedPaymentMethod = PaymentGateway.razorpay.name;
-  //             _preInitializeRazorpay();
-  //           }
-  //         });
-  //   } catch (e) {
-  //     debugPrint('[PAYMENT_SETTINGS] ❌ Error: $e');
-  //   }
-  //   notifyListeners();
-  // }
 
   /// 🔑 OPTIMIZATION: Pre-initialize Razorpay in background for faster payment flow
   Future<void> _preInitializeRazorpay() async {
@@ -7082,38 +4481,6 @@ class CartControllerProvider extends ChangeNotifier {
       }
     }
     if (!_isCalculatingPrice) notifyListeners();
-  }
-
-  Future<void> rollbackFailedOrder(
-    String orderId,
-    List<CartProductModel> products,
-  ) async {
-    try {
-      // Prepare the request body
-      final Map<String, dynamic> requestBody = {
-        "order_id": orderId,
-        "products": products
-            .map((product) => {"id": product.id, "quantity": product.quantity})
-            .toList(),
-      };
-      final response = await http.post(
-        Uri.parse('${AppConst.baseUrl}/mobile/orders/rollback-failed'),
-        headers: await getHeaders(),
-        body: jsonEncode(requestBody),
-      );
-      if (response.statusCode == 200) {
-        debugPrint('Order rollback successful for order: $orderId');
-        notifyListeners();
-      } else {
-        // Handle API error
-        debugPrint('Failed to rollback order: ${response.statusCode}');
-        throw Exception('Failed to rollback order: ${response.statusCode}');
-      }
-    } catch (e) {
-      debugPrint('Error rolling back order: $e');
-      // Re-throw the exception or handle it as needed
-      rethrow;
-    }
   }
 
   // ============ PAYMENT DIALOG METHOD ============
@@ -7536,11 +4903,6 @@ class CartControllerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ============ PROCESS PAYMENT METHOD ============
-
-  // ============ OPEN CHECKOUT METHOD ============
-  // Add this method if it's missing:
-
   void resetAllProcessingFlags() {
     debugPrint('🔄 [SAFETY_RESET] Resetting all processing flags');
 
@@ -7549,8 +4911,6 @@ class CartControllerProvider extends ChangeNotifier {
     isPaymentCompleted = false;
     _isOrderBeingCreated = false;
     _isOrderCreationInProgress = false;
-    _orderInProgress = false;
-    _isGlobalLocked = false;
     _currentOrderPaymentId = null;
 
     // Clear any pending timers
@@ -7685,142 +5045,6 @@ class CartControllerProvider extends ChangeNotifier {
     }
   }
 
-  // ============ PLACE ORDER METHOD ============
-  // Add this method if it's missing:
-
-  // Add this method if validateOrderBeforePayment is missing:
-  // Future<bool> validateOrderBeforePayment(BuildContext context) async {
-  //   try {
-  //     if (HomeProvider.cartItem.isEmpty) {
-  //       ShowToastDialog.showToast(
-  //         "Your cart is empty. Please add items before placing order.".tr,
-  //       );
-  //       return false;
-  //     }
-  //
-  //     try {
-  //       await validateMinimumOrderValue();
-  //     } catch (e) {
-  //       return false;
-  //     }
-  //
-  //     final addressValid = await _validateAddressBulletproof(context);
-  //     if (!addressValid) {
-  //       return false;
-  //     }
-  //
-  //     if (vendorModel.id != null) {
-  //       final latestVendor = await FireStoreUtils.getVendorById(
-  //         vendorModel.id!,
-  //       );
-  //       if (latestVendor != null) {
-  //         if (latestVendor.vType == 'mart') {
-  //           if (latestVendor.isOpen == false) {
-  //             ShowToastDialog.showToast(
-  //               "Jippy Mart is temporarily closed. Please try again later.",
-  //             );
-  //             return false;
-  //           }
-  //         } else {
-  //           if (!RestaurantStatusUtils.canAcceptOrders(latestVendor)) {
-  //             ShowToastDialog.showToast("Restaurant Closed");
-  //             return false;
-  //           }
-  //         }
-  //       }
-  //     }
-  //
-  //     // Validate all items in cart for availability
-  //     for (var item in HomeProvider.cartItem) {
-  //       bool isMartItem = item.vendorID?.startsWith('mart_') == true;
-  //
-  //       if (isMartItem) {
-  //         try {
-  //           final martItems = await MartFirestoreService().getMartItems();
-  //           final martItem = martItems.firstWhere(
-  //             (mart) => mart.id == item.id!,
-  //             orElse: () => MartItemModel(
-  //               id: '',
-  //               name: '',
-  //               description: '',
-  //               price: 0,
-  //               photo: '',
-  //               isAvailable: false,
-  //               publish: false,
-  //               veg: false,
-  //               nonveg: false,
-  //               quantity: 0,
-  //             ),
-  //           );
-  //
-  //           final availableQuantity = martItem.quantity;
-  //           final orderedQuantity = item.quantity ?? 0;
-  //           if (availableQuantity != -1 &&
-  //               availableQuantity < orderedQuantity) {
-  //             final itemName = martItem.displayName;
-  //             ShowToastDialog.showToast(
-  //               "$itemName is out of stock. Available: $availableQuantity, Ordered: $orderedQuantity",
-  //             );
-  //             return false;
-  //           }
-  //         } catch (e) {
-  //           debugPrint('[ORDER VALIDATION] ❌ Error validating mart items: $e');
-  //           ShowToastDialog.showToast(
-  //             "Error validating mart items. Please try again.",
-  //           );
-  //           return false;
-  //         }
-  //       } else {
-  //         final productId = item.id;
-  //         if (productId == null ||
-  //             productId.isEmpty ||
-  //             productId == 'null' ||
-  //             productId.trim().isEmpty) {
-  //           debugPrint('[CART_VALIDATION] Invalid product ID: $productId');
-  //           ShowToastDialog.showToast(
-  //             "Some items in your cart have invalid product information.".tr,
-  //           );
-  //           return false;
-  //         }
-  //
-  //         final baseProductId = productId.contains('~')
-  //             ? productId.split('~').first
-  //             : productId;
-  //
-  //         final product = await FireStoreUtils.getProductById(baseProductId);
-  //         if (product == null) {
-  //           ShowToastDialog.showToast(
-  //             "Some items in your cart are no longer available.".tr,
-  //           );
-  //           return false;
-  //         }
-  //
-  //         if (product.quantity != -1) {
-  //           int availableQuantity = product.quantity ?? 0;
-  //           int orderedQuantity = item.quantity ?? 0;
-  //
-  //           if (availableQuantity < orderedQuantity) {
-  //             ShowToastDialog.showToast(
-  //               "${product.name} is out of stock. Available: $availableQuantity, Ordered: $orderedQuantity"
-  //                   .tr,
-  //             );
-  //             return false;
-  //           }
-  //         }
-  //       }
-  //     }
-  //
-  //     return true;
-  //   } catch (e) {
-  //     debugPrint('[ORDER_VALIDATION] ❌ Error: $e');
-  //     ShowToastDialog.showToast("Error validating order. Please try again.".tr);
-  //     return false;
-  //   }
-  // }
-
-  // ============ SET ORDER METHOD ============
-  // Add this method if it's missing:
-
   setOrder() async {
     _startOperation('setOrder');
 
@@ -7920,15 +5144,6 @@ class CartControllerProvider extends ChangeNotifier {
         await Future.delayed(Duration(milliseconds: 100));
       }
 
-      // // final canProceed = await controller.validateAndPlaceOrderBulletproof(
-      //   context,
-      // );
-      // if (!canProceed) {
-      //   controller.endOrderProcessing();
-      //   return;
-      // }
-
-      // Validate coupon amount
       if ((controller.couponAmount >= 1) &&
           (controller.couponAmount > controller.totalAmount)) {
         ShowToastDialog.showToast(
@@ -7976,9 +5191,7 @@ class CartControllerProvider extends ChangeNotifier {
         final response = await controller.forcePaymentInitiate();
         final orderId = controller.initiatePaymentId;
         if (response == null || orderId == null || orderId.isEmpty) {
-          debugPrint(
-            '❌ [PROCESS_PAYMENT] COD initiate returned no order id',
-          );
+          debugPrint('❌ [PROCESS_PAYMENT] COD initiate returned no order id');
           ShowToastDialog.showToast(
             "Your order could not be created. Please try again.".tr,
           );
@@ -8034,11 +5247,12 @@ class CartControllerProvider extends ChangeNotifier {
     final now = DateTime.now();
     if (controller._payuRateLimitedUntil != null &&
         now.isBefore(controller._payuRateLimitedUntil!)) {
-      final remaining = controller
-          ._payuRateLimitedUntil!
+      final remaining = controller._payuRateLimitedUntil!
           .difference(now)
           .inSeconds;
-      debugPrint('⏳ [PAYU] RATE LIMITED - checkout blocked ($remaining s left)');
+      debugPrint(
+        '⏳ [PAYU] RATE LIMITED - checkout blocked ($remaining s left)',
+      );
       controller.endOrderProcessing();
       ShowToastDialog.showToast(
         'PayU is temporarily busy. Please try again after 60 seconds.'.tr,
@@ -8062,9 +5276,7 @@ class CartControllerProvider extends ChangeNotifier {
     final payuUrl = response['payment_url'] as String;
     // The server's `payload` map is the PayU form. No re-parsing: the WebView
     // turns every entry into a hidden form field, so nothing is dropped.
-    final formFields = Map<String, dynamic>.from(
-      response['payload'] as Map,
-    );
+    final formFields = Map<String, dynamic>.from(response['payload'] as Map);
 
     // PayU posts the field as `phone`; the server payload names it
     // `phoneNumber`. Normalise but keep everything else untouched.
@@ -8164,7 +5376,6 @@ class CartControllerProvider extends ChangeNotifier {
     // NEW txnid — PayU rejects / rate-limits a txnid that is POSTed twice.
     controller._lastInitiatePaymentId = null;
     controller._lastInitiateConfigKey = '';
-    controller._lastInitiatePaymentResponse = null;
 
     final result = await PayUWebView.open(
       context,
@@ -8415,298 +5626,6 @@ class CartControllerProvider extends ChangeNotifier {
       controller.endOrderProcessing();
     }
   }
-
-  // Future<void> startPaytmPaymentFlow(BuildContext context) async {
-  //   bool smartlookStopped = false;
-  //   try {
-  //     // Paytm flow must create the order ONCE (same as COD/Razorpay UX).
-  //     // We use backend Paytm initiate in "legacy payload" mode, which first creates
-  //     // the Jippy3... order using the same payload as `mobile/orders`.
-  //     selectedPaymentMethod = PaymentGateway.paytm.name;
-  //
-  //     final authorId = await SqlStorageConst.getFirebaseId();
-  //     if (authorId!.isEmpty) {
-  //       ShowToastDialog.showToast("Please login again to continue payment.".tr);
-  //       endOrderProcessing();
-  //       return;
-  //     }
-  //
-  //     final double amountToPay = useWalletBalance
-  //         ? paymentGatewayAmount
-  //         : totalAmount;
-  //     if (amountToPay <= 0) {
-  //       // Wallet covers everything -> normal order placement (no gateway).
-  //       await placeOrder(context);
-  //       return;
-  //     }
-  //
-  //     final String amountStr = amountToPay.toStringAsFixed(2);
-  //
-  //     // Build payload identical to order creation so backend can create ONE orderId.
-  //     final cartItems = HomeProvider.cartItem;
-  //     if (cartItems.isEmpty) {
-  //       ShowToastDialog.showToast(
-  //         "Cart is empty. Please add items to cart.".tr,
-  //       );
-  //       endOrderProcessing();
-  //       return;
-  //     }
-  //
-  //     final orderPayload = <String, dynamic>{
-  //       "author_id": authorId,
-  //       "cart_items": cartItems.map((item) => item.toJson()).toList(),
-  //       "selected_address": {
-  //         "isDefault": selectedAddress?.isDefault,
-  //         "address": selectedAddress?.address,
-  //         "addressAs": selectedAddress?.addressAs,
-  //         "locality": selectedAddress?.locality,
-  //         "location": {
-  //           "latitude": selectedAddress?.location?.latitude,
-  //           "longitude": selectedAddress?.location?.longitude,
-  //         },
-  //         "id": selectedAddress?.id,
-  //         "landmark": selectedAddress?.landmark,
-  //       },
-  //       "payment_method": PaymentGateway.paytm.name,
-  //       "total_amount": totalAmount,
-  //       "delivery_charges": deliveryCharges.toString(),
-  //       "tip_amount": deliveryTips.toString(),
-  //       "coupon_id": selectedCouponModel.id ?? '',
-  //       "coupon_code": selectedCouponModel.code ?? '',
-  //       "discount": couponAmount,
-  //       "schedule_time": scheduleDateTime.toIso8601String(),
-  //       "surge_percent": surgePercent,
-  //       "admin_surge_fee": surgePercent > 0 ? await getAdminSurgeFee() : "0",
-  //       "special_discount": {
-  //         "special_discount": specialDiscountAmount,
-  //         "special_discount_label": specialDiscount,
-  //         "specialType": specialType,
-  //       },
-  //       "vendor_id": _getVendorIdForOrder(),
-  //       "v_type":
-  //           vendorModel.vType ?? (hasMartItemsInCart() ? 'mart' : 'restaurant'),
-  //       // For Paytm (gateway), order should be created as pending first,
-  //       // then backend will update it to Order Placed after TXN_SUCCESS.
-  //       "status": paymentGatewayAmount > 0 ? "PENDING" : Constant.orderPlaced,
-  //       "created_at": DateTime.now().toIso8601String(),
-  //       "wallet_amount": walletToUse,
-  //       "payment_gateway_amount": paymentGatewayAmount,
-  //     };
-  //
-  //     ShowToastDialog.showLoader("Creating your order...".tr);
-  //
-  //     final initUri = Uri.parse('${AppConst.baseUrl}paytm/initiate');
-  //     final initHeaders = await getHeaders();
-  //     final initHttpResp = await http
-  //         .post(initUri, headers: initHeaders, body: jsonEncode(orderPayload))
-  //         .timeout(const Duration(seconds: 30));
-  //
-  //     final initResponse =
-  //         jsonDecode(initHttpResp.body) as Map<String, dynamic>?;
-  //
-  //     if (initHttpResp.statusCode != 200 ||
-  //         initResponse == null ||
-  //         initResponse['success'] != true ||
-  //         initResponse['orderId'] == null) {
-  //       ShowToastDialog.closeLoader();
-  //       ShowToastDialog.showToast(
-  //         "Unable to initiate Paytm payment. Please try again.".tr,
-  //       );
-  //       endOrderProcessing();
-  //       return;
-  //     }
-  //
-  //     final String orderId = initResponse['orderId'].toString();
-  //     final String? txnTokenRaw = initResponse['txnToken']?.toString();
-  //     final String paytmMid = (initResponse['mid'] ?? initResponse['MID'] ?? '')
-  //         .toString()
-  //         .trim();
-  //     if (paytmMid.isEmpty) {
-  //       ShowToastDialog.closeLoader();
-  //       ShowToastDialog.showToast(
-  //         "Paytm configuration error (missing mid).".tr,
-  //       );
-  //       endOrderProcessing();
-  //       return;
-  //     }
-  //     final dynamic rawIsStaging =
-  //         (initResponse['isStaging'] ?? initResponse['is_staging'] ?? true);
-  //     final bool isStagingEnv =
-  //         rawIsStaging == true ||
-  //         rawIsStaging.toString().toLowerCase() == 'true' ||
-  //         rawIsStaging.toString() == '1';
-  //
-  //     String callbackUrl =
-  //         (initResponse['callbackUrl'] ?? initResponse['callback_url'] ?? '')
-  //             .toString();
-  //
-  //     // Fallback: if backend doesn't return callbackUrl, build the official Paytm callback.
-  //     if (callbackUrl.trim().isEmpty) {
-  //       final host = isStagingEnv
-  //           ? "https://securestage.paytmpayments.com"
-  //           : "https://secure.paytmpayments.com";
-  //       callbackUrl = "$host/theia/paytmCallback?ORDER_ID=$orderId";
-  //     }
-  //
-  //     // If gateway payment is not required (wallet covers it), txnToken can be null.
-  //     if (txnTokenRaw == null || txnTokenRaw.trim().isEmpty) {
-  //       final m = OrderModel()..id = orderId;
-  //       try {
-  //         // Prefer reading provider from context to avoid late-init issues.
-  //         final op = Provider.of<OrderPlacingProvider>(context, listen: false);
-  //         op.initFunction(orderModels: m);
-  //       } catch (e) {
-  //         debugPrint('⚠️ [PAYTM_FLOW] Could not init OrderPlacingProvider: $e');
-  //       }
-  //       try {
-  //         ShowToastDialog.closeLoader();
-  //       } catch (_) {}
-  //       endOrderProcessing();
-  //       // Always navigate even if provider init fails.
-  //       Get.off(() => const OrderPlacingScreen());
-  //       return;
-  //     }
-  //
-  //     final String txnToken = txnTokenRaw.trim();
-  //
-  //     ShowToastDialog.closeLoader();
-  //
-  //     // Smartlook recording can cause ANR/crashes when Paytm opens its WebView.
-  //     // Pause it during payment flow for smooth gateway launch.
-  //     try {
-  //       SmartlookService().stopRecording();
-  //       smartlookStopped = true;
-  //     } catch (_) {}
-  //
-  //     // Keep UI responsive: do not keep any loader open while the Paytm SDK launches.
-  //     try {
-  //       ShowToastDialog.closeLoader();
-  //     } catch (_) {}
-  //
-  //     final sdkResult = await PaytmService.startTransaction(
-  //       mid: paytmMid,
-  //       orderId: orderId,
-  //       txnToken: txnToken,
-  //       amount: amountStr,
-  //       callbackUrl: callbackUrl,
-  //       isStaging: isStagingEnv,
-  //     );
-  //
-  //     if (smartlookStopped) {
-  //       try {
-  //         SmartlookService().startRecording();
-  //       } catch (_) {}
-  //     }
-  //
-  //     if (sdkResult == null) {
-  //       ShowToastDialog.showToast("Unable to open Paytm. Please try again.".tr);
-  //       endOrderProcessing();
-  //       return;
-  //     }
-  //
-  //     if (sdkResult['error'] == true) {
-  //       final msg = (sdkResult['message'] ?? sdkResult['details'] ?? '')
-  //           .toString()
-  //           .trim();
-  //       ShowToastDialog.showToast(
-  //         msg.isNotEmpty ? msg : "Unable to open Paytm. Please try again.".tr,
-  //       );
-  //       endOrderProcessing();
-  //       return;
-  //     }
-  //
-  //     final status = (sdkResult['STATUS'] ?? sdkResult['resultStatus'] ?? "")
-  //         .toString();
-  //
-  //     if (!status.toUpperCase().contains("SUCCESS")) {
-  //       ShowToastDialog.showToast("Payment failed or cancelled.".tr);
-  //       endOrderProcessing();
-  //       return;
-  //     }
-  //
-  //     // Confirm on backend (server-side verification + update same orderId).
-  //     // Endpoint: POST /paytm/confirm { orderId }
-  //     final confirmUri = Uri.parse('${AppConst.baseUrl}paytm/confirm');
-  //     final confirmHeaders = await getHeaders();
-  //     String? finalStatus;
-  //
-  //     // Show loader once (avoid flicker) while confirming status.
-  //     ShowToastDialog.showLoader("Confirming payment status...".tr);
-  //     for (var attempt = 0; attempt < 6; attempt++) {
-  //       final confirmResp = await http
-  //           .post(
-  //             confirmUri,
-  //             headers: confirmHeaders,
-  //             body: jsonEncode(<String, dynamic>{"orderId": orderId}),
-  //           )
-  //           .timeout(const Duration(seconds: 30));
-  //
-  //       Map<String, dynamic>? confirmJson;
-  //       try {
-  //         confirmJson = jsonDecode(confirmResp.body) as Map<String, dynamic>?;
-  //       } catch (_) {
-  //         confirmJson = null;
-  //       }
-  //
-  //       if (confirmResp.statusCode == 200 &&
-  //           confirmJson != null &&
-  //           confirmJson['success'] == true) {
-  //         finalStatus = (confirmJson['resultStatus'] ?? 'TXN_SUCCESS')
-  //             .toString();
-  //         break;
-  //       }
-  //
-  //       // 409 / pending or other -> wait and retry a few times
-  //       if (attempt < 5) {
-  //         await Future.delayed(Duration(seconds: 2 + attempt));
-  //       }
-  //     }
-  //
-  //     if (finalStatus == null ||
-  //         (!finalStatus.toUpperCase().contains('SUCCESS') &&
-  //             finalStatus != 'TXN_SUCCESS')) {
-  //       ShowToastDialog.closeLoader();
-  //       ShowToastDialog.showToast(
-  //         "Payment is pending. Please wait and check again in Orders.".tr,
-  //       );
-  //       endOrderProcessing();
-  //       return;
-  //     }
-  //
-  //     // Payment confirmed. Do NOT create a second order via `mobile/orders`.
-  //     // Navigate to the order placed screen for the SAME orderId created above.
-  //     final m = OrderModel()..id = orderId;
-  //     try {
-  //       final op = Provider.of<OrderPlacingProvider>(context, listen: false);
-  //       op.initFunction(orderModels: m);
-  //     } catch (e) {
-  //       debugPrint('⚠️ [PAYTM_FLOW] Could not init OrderPlacingProvider: $e');
-  //     }
-  //     try {
-  //       ShowToastDialog.closeLoader();
-  //     } catch (_) {}
-  //     endOrderProcessing();
-  //     // Use offAll to avoid any stuck payment routes on back-stack.
-  //     Get.offAll(() => const OrderPlacingScreen());
-  //   } catch (e, st) {
-  //     debugPrint("❌ [PAYTM_FLOW] $e");
-  //     debugPrint(st);
-  //     try {
-  //       ShowToastDialog.closeLoader();
-  //     } catch (_) {}
-  //     endOrderProcessing();
-  //     ShowToastDialog.showToast(
-  //       "Something went wrong while processing Paytm payment.".tr,
-  //     );
-  //   } finally {
-  //     // Always restore Smartlook if we paused it.
-  //     if (smartlookStopped) {
-  //       try {
-  //         SmartlookService().startRecording();
-  //       } catch (_) {}
-  //     }
-  //   }
-  // }
 
   Future<void> startPaytmPaymentFlow(BuildContext context) async {
     bool smartlookStopped = false;
@@ -9098,7 +6017,6 @@ class CartControllerProvider extends ChangeNotifier {
       }
 
       // 🔑 FIX 2: Build order model and API payload
-      String? orderId;
       List<CartProductModel> orderedProducts = [];
       OrderModel? orderModel;
 
@@ -9140,46 +6058,6 @@ class CartControllerProvider extends ChangeNotifier {
       };
 
       orderModel = OrderModel();
-
-      // 🔑 OPTIMIZATION: Get latest order number in parallel with other operations
-      // This is non-critical and can run in background
-      int maxNumber = 5;
-      final orderNumberFuture = http
-          .get(
-            Uri.parse('${AppConst.baseUrl}firestore/getLatestOrderInRange'),
-            headers: await getHeaders(),
-          )
-          .timeout(
-            const Duration(seconds: 5),
-            // 🔑 OPTIMIZATION: Short timeout for faster failure
-            onTimeout: () {
-              throw Exception('Order number fetch timeout');
-            },
-          )
-          .then((response) {
-            if (response.statusCode == 200) {
-              final responseData = json.decode(response.body);
-              if (responseData['success'] == true &&
-                  responseData['order'] != null) {
-                final orderData = responseData['order'];
-                final String orderIdFromApi = orderData['id'].toString();
-                final match = RegExp(r'Jippy3(\d+)').firstMatch(orderIdFromApi);
-                if (match != null) {
-                  final num = int.tryParse(match.group(1)!);
-                  if (num != null && num > maxNumber) {
-                    return num;
-                  }
-                }
-              }
-            }
-            return maxNumber;
-          })
-          .catchError((e) {
-            debugPrint(
-              '⚠️ [ORDER_CREATION] Error fetching latest order (non-critical): $e',
-            );
-            return maxNumber; // Return default on error
-          });
 
       // 🔑 OPTIMIZATION: Build order model immediately (no await delays)
       orderModel.address = selectedAddress;
@@ -9306,13 +6184,6 @@ class CartControllerProvider extends ChangeNotifier {
 
       String? createdOrderId;
 
-      // COD orders are created by POST /div/payment/initiate, which is called
-      // earlier from processPayment and already receives the complete order
-      // payload — outlet, customer, address, every item with prices, the totals
-      // and `paymentModeId`. Its response carries the created order's id, so
-      // posting to /mobile/orders afterwards created a second, duplicate order
-      // and, because that endpoint returns a flat `success: null` DTO, usually
-      // left the user stuck on the payment screen instead.
       final isCodOrder = selectedPaymentMethod == PaymentGateway.cod.name;
 
       if (isCodOrder) {
@@ -9727,10 +6598,6 @@ class CartControllerProvider extends ChangeNotifier {
 
     selectedAddress = addressModel;
     _addressInitialized = true;
-
-    _cachedDistance = null;
-    _cachedCustomerLat = null;
-    _cachedCustomerLng = null;
 
     await _loadFreshVendorForCart();
     notifyListeners();

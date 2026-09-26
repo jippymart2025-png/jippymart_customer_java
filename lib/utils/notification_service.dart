@@ -54,7 +54,8 @@ class NotificationService {
 
   /// Absolute id of the navigator key, used to route taps when the app is
   /// already running but no BuildContext is at hand.
-  final GlobalKey<NavigatorState> _navigatorKey = GlobalDeeplinkHandler.navigatorKey;
+  final GlobalKey<NavigatorState> _navigatorKey =
+      GlobalDeeplinkHandler.navigatorKey;
 
   bool _initialized = false;
   bool _drainInFlight = false;
@@ -152,7 +153,8 @@ class NotificationService {
 
       final android = _localNotifications
           .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>();
+            AndroidFlutterLocalNotificationsPlugin
+          >();
       await android?.createNotificationChannel(
         const AndroidNotificationChannel(
           defaultChannelId,
@@ -175,12 +177,11 @@ class NotificationService {
       if (Platform.isAndroid) {
         final android = _localNotifications
             .resolvePlatformSpecificImplementation<
-                AndroidFlutterLocalNotificationsPlugin>();
+              AndroidFlutterLocalNotificationsPlugin
+            >();
         // Required on Android 13 (API 33). Without it every push is dropped.
         await android?.requestNotificationsPermission();
-        await android?.requestExactAlarmsPermission();
-        authorized =
-            await android?.areNotificationsEnabled() ?? true;
+        authorized = await android?.areNotificationsEnabled() ?? true;
       } else if (Platform.isIOS) {
         // firebase_messaging 16.x returns NotificationSettings.
         final settings = await FirebaseMessaging.instance.requestPermission(
@@ -190,7 +191,8 @@ class NotificationService {
           provisional: false,
         );
         final status = settings.authorizationStatus;
-        authorized = status == AuthorizationStatus.authorized ||
+        authorized =
+            status == AuthorizationStatus.authorized ||
             status == AuthorizationStatus.provisional;
       } else {
         authorized = true;
@@ -266,9 +268,11 @@ class NotificationService {
     final notification = message.notification;
     final data = message.data;
 
-    final title = notification?.title ??
+    final title =
+        notification?.title ??
         (data['title'] ?? data['subject'] ?? 'JippyMart');
-    final body = notification?.body ??
+    final body =
+        notification?.body ??
         (data['body'] ?? data['message'] ?? data['description'] ?? '');
 
     if (title.isEmpty && body.isEmpty) {
@@ -362,9 +366,18 @@ class NotificationService {
       return;
     }
 
-    final type = _firstString(data, const ['type', 'notification_type', 'event']);
-    final id = _firstString(data, const ['id', 'order_id', 'product_id',
-      'restaurant_id', 'outlet_id']);
+    final type = _firstString(data, const [
+      'type',
+      'notification_type',
+      'event',
+    ]);
+    final id = _firstString(data, const [
+      'id',
+      'order_id',
+      'product_id',
+      'restaurant_id',
+      'outlet_id',
+    ]);
     if (type == null || type.isEmpty) return;
 
     switch (type.toLowerCase()) {
@@ -459,7 +472,8 @@ class NotificationService {
     }
     _lastOrderTimerMinuteNotified = minutes;
 
-    final value = '${minutes.toString().padLeft(2, '0')}:'
+    final value =
+        '${minutes.toString().padLeft(2, '0')}:'
         '${seconds.toString().padLeft(2, '0')}';
 
     const androidDetails = AndroidNotificationDetails(
