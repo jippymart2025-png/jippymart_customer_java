@@ -8,6 +8,7 @@ import 'package:jippymart_customer/app/profile_screen/widget/buildSliverHeader.d
 import 'package:jippymart_customer/app/terms_and_condition/terms_and_condition_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/services/database_helper.dart';
+import 'package:jippymart_customer/services/device_token_service.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/custom_dialog_box.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
@@ -607,7 +608,13 @@ class _ProfileScreenState extends State<ProfileScreen>
         negativeString: 'Cancel'.tr,
         positiveClick: () async {
           Constant.userModel!.fcmToken = '';
-          await EditProfileProvider.updateUserStatic(Constant.userModel!);
+          await EditProfileProvider.updateUserStatic(
+            Constant.userModel!,
+            // Send the empty token through instead of letting it be
+            // re-populated with this device's live FCM token.
+            preserveEmptyFcmToken: true,
+          );
+          await DeviceTokenService.instance.unregister();
           Constant.userModel = null;
           FireStoreUtils.backendUserId = null;
           try {

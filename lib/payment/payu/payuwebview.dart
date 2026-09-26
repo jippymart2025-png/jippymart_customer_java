@@ -143,8 +143,8 @@ class _PayUWebViewState extends State<PayUWebView> {
             _diagnosePayUPage(url);
           },
           onNavigationRequest: (request) {
-            _handleUrl(request.url);
-            return NavigationDecision.navigate;
+            debugPrint('🧭 [PAYU] NAVIGATION REQUEST: ${request.url}');
+            return _handleUrl(request.url);
           },
           onUrlChange: (change) {
             final url = change.url;
@@ -358,18 +358,44 @@ class _PayUWebViewState extends State<PayUWebView> {
         normalizedUrl.contains(normalizedTarget);
   }
 
-  void _handleUrl(String url) {
-    debugPrint('🔗 [PAYU] URL: $url');
-    if (_finished) return;
-
-    final surl = widget.formFields['surl']?.toString() ?? '';
-    final furl = widget.formFields['furl']?.toString() ?? '';
-
-    if (_urlMatches(url, surl)) {
-      _finish(PayUCheckoutOutcome.success);
-    } else if (_urlMatches(url, furl)) {
-      _finish(PayUCheckoutOutcome.failure);
+  /// True when [url] is (a sub-path of) the configured `surl`.
+  bool _isSuccessRedirect(String url) {
+    if (_urlMatches(url, widget.formFields['surl']?.toString() ?? '')) {
+      return true;
     }
+    // Fallback: the backend webhook that PayU bounces the browser to after a
+    // successful payment. Matched on the path so it works even if the initiate
+    // payload omits or renames the `surl` field.
+    return url.toLowerCase().contains('/api/div/payments/payu/success');
+  }
+
+  /// True when [url] is (a sub-path of) the configured `furl`.
+  bool _isFailureRedirect(String url) {
+    if (_urlMatches(url, widget.formFields['furl']?.toString() ?? '')) {
+      return true;
+    }
+    // Fallback: the backend webhook that PayU bounces the browser to after a
+    // failed payment.
+    return url.toLowerCase().contains('/api/div/payments/payu/failure');
+  }
+
+  /// Inspects every navigation and URL change. A redirect to the `surl`/`furl`
+  /// webhook closes the checkout with the matching outcome and tells the
+  /// WebView NOT to load that page (it is a backend API, not a screen).
+  NavigationDecision _handleUrl(String url) {
+    if (_finished) return NavigationDecision.navigate;
+
+    debugPrint('🔗 [PAYU] URL: $url');
+
+    if (_isSuccessRedirect(url)) {
+      _finish(PayUCheckoutOutcome.success);
+      return NavigationDecision.prevent;
+    }
+    if (_isFailureRedirect(url)) {
+      _finish(PayUCheckoutOutcome.failure);
+      return NavigationDecision.prevent;
+    }
+    return NavigationDecision.navigate;
   }
 
   void _finish(PayUCheckoutOutcome outcome) {

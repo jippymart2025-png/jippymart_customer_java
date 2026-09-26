@@ -3,6 +3,12 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- ✅ Required to show notifications on Android 13+ (API 33).
+         Without it the OS silently drops every push. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
     <!-- ✅ Location permissions -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
@@ -119,12 +125,31 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="jippymart" />
             </intent-filter>
+
+            <!-- ✅ REQUIRED by FCM messages that set
+                 click_action = "FLUTTER_NOTIFICATION_CLICK".
+                 When the click_action has no matching activity Android
+                 discards the notification, so this filter must stay. -->
+            <intent-filter>
+                <action android:name="FLUTTER_NOTIFICATION_CLICK" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
 
         <!-- ✅ Firebase messaging configuration -->
+        <!-- Small icon must be a monochrome drawable; a colour launcher icon
+             renders as a white square in the status bar. -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
-            android:resource="@mipmap/ic_launcher" />
+            android:resource="@drawable/ic_launcher_monochrome" />
+        <!-- Messages sent without an explicit channel_id land here. Must match
+             NotificationService.defaultChannelId. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="jippymart_default" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/notification_color" />
 
         <!-- ✅ Flutter embedding -->
         <meta-data

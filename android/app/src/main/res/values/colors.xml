@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Accent used for the notification status bar / small icon tint on
+         Android. Referenced by
+         com.google.firebase.messaging.default_notification_color. -->
+    <color name="notification_color">#FF1B7B3F</color>
+</resources>

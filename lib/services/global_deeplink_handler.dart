@@ -96,6 +96,15 @@ class GlobalDeeplinkHandler {
   /// Get the pending deep link
   String? get pendingDeeplink => _pendingDeeplink;
 
+  /// Parks a link without navigating. Used when no BuildContext exists yet
+  /// (e.g. a push notification tap during cold start). The link is consumed
+  /// later by [navigatePendingDeeplink].
+  void queueLink(String url) {
+    if (url.isEmpty) return;
+    _pendingDeeplink = url;
+    print('🔗 [GLOBAL_DEEPLINK] Queued pending link: $url');
+  }
+
   /// Navigate to pending deep link (call this after home screen is ready)
   void navigatePendingDeeplink(BuildContext context) {
     if (!hasPendingDeeplink || _isProcessing) {

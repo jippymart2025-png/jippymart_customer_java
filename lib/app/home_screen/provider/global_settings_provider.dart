@@ -8,6 +8,7 @@ import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/models/admin_commission.dart';
 import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/services/terms_api_service.dart';
+import 'package:jippymart_customer/services/device_token_service.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/utils/notification_service.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
@@ -265,7 +266,7 @@ class GlobalSettingsProvider extends ChangeNotifier {
     print('[DEBUG] Settings loaded successfully from API');
   }
 
-  NotificationService notificationService = NotificationService();
+  NotificationService notificationService = NotificationService.instance;
 
   void _prefetchLegalDocuments() {
     TermsApiService.getContent(
@@ -282,12 +283,17 @@ class GlobalSettingsProvider extends ChangeNotifier {
     });
   }
 
+  /// Notification bootstrap for the signed-in customer.
+  ///
+  /// initInfo() is idempotent and is already invoked from main(); this method
+  /// only makes sure the token reaches the backend for the current user.
   notificationInit() {
     notificationService.initInfo().then((value) async {
-      String token = await NotificationService.getToken();
+      String? token = await NotificationService.getToken();
       log(":::::::TOKEN:::::: $token");
       final userId = await SqlStorageConst.getFirebaseId();
       if (userId != null) {
+        DeviceTokenService.instance.setActiveCustomer(userId);
         await AddressListProvider.getUserProfile(userId).then((value) {
           if (value != null) {
             UserModel driverUserModel = value;

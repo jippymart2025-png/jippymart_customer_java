@@ -103,7 +103,10 @@ class UserModel {
         return null;
       }
 
-      return UserModel(
+      // The constructor has no fcmToken field, so it is assigned afterwards.
+      // Without this the stored token is lost on every profile refresh and the
+      // app keeps re-fetching it.
+      final model = UserModel(
         id: json['id']?.toString(),
         firebaseId: json['firebase_id']?.toString(),
         email: json['email']?.toString(),
@@ -124,6 +127,8 @@ class UserModel {
         provider: json['provider']?.toString(),
         shippingAddress: addresses,
       );
+      model.fcmToken = json['fcmToken']?.toString();
+      return model;
     } catch (e) {
       log('Error converting user data: $e');
       rethrow;
@@ -245,6 +250,7 @@ class UserModel {
       'role': role,
       'appIdentifier': appIdentifier,
       'provider': provider,
+      'fcmToken': fcmToken,
       'shippingAddress': shippingAddress?.map((e) => e.toJson()).toList(),
     };
   }

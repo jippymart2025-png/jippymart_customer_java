@@ -21,7 +21,7 @@ import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart'
     show SqlStorageConst;
 import 'package:jippymart_customer/utils/safe_http_client.dart';
-import 'package:jippymart_customer/utils/notification_service.dart';
+import 'package:jippymart_customer/services/device_token_service.dart';
 import 'package:jippymart_customer/utils/production_logger.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
@@ -320,55 +320,18 @@ class LoginProvider extends ChangeNotifier {
   }
 
   /// Registers or updates the FCM device token on the backend
-  /// (POST /api/notification/device-token) after successful login.
+  /// (POST {baseUrl}notification/device-token) after successful login.
+  ///
+  /// Delegates to [DeviceTokenService] so launch/login/token-refresh all share
+  /// one registration path and one base URL. It previously posted to a
+  /// hardcoded LAN address, which is why the backend never had a usable token.
   Future<void> _registerDeviceToken(String? customerId) async {
-    try {
-      final id = int.tryParse(customerId ?? '');
-      if (id == null) return;
-
-      final fcmToken = await NotificationService.getToken();
-      if (fcmToken == null || fcmToken.isEmpty) {
-        print('[DEVICE_TOKEN] FCM token unavailable, skipping registration');
-        return;
-      }
-
-      final deviceType = Platform.isAndroid ? 'ANDROID' : 'IOS';
-
-      final url = Uri.parse(
-        'http://192.168.0.7:8084/api/notification/device-token',
-      );
-      final headers = await getHeaders();
-      final body = json.encode({
-        'userId': id,
-        'userType': Constant.userRoleCustomer.toUpperCase(),
-        'deviceType': deviceType,
-        'fcmToken': fcmToken,
-      });
-
-      final httpResponse = await SafeHttpClient.safePost(
-        url,
-        headers: headers,
-        body: body,
-        timeout: const Duration(seconds: 15),
-      );
-
-      if (httpResponse == null) {
-        throw const SocketException('No internet connection');
-      }
-
-      if (httpResponse.statusCode != 200) {
-        throw Exception(
-          'HTTP ${httpResponse.statusCode}: ${httpResponse.body}',
-        );
-      }
-
-      final response = json.decode(httpResponse.body) as Map<String, dynamic>;
-      print(
-        '[DEVICE_TOKEN] ${response['message'] ?? 'FCM token sent successfully'}',
-      );
-    } catch (e) {
-      print('[DEVICE_TOKEN] Error sending FCM token: $e');
+    if (customerId == null || customerId.isEmpty) {
+      print('[DEVICE_TOKEN] No customerId, skipping registration');
+      return;
     }
+    // setActiveCustomer remembers the id and registers the token itself.
+    DeviceTokenService.instance.setActiveCustomer(customerId);
   }
 
   Future<void> _handleRegisteredUser(

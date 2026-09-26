@@ -437,6 +437,7 @@ class EditProfileProvider extends ChangeNotifier {
     UserModel userModel, {
     int customerStatusId = 1,
     String? referralCode,
+    bool preserveEmptyFcmToken = false,
   }) async {
     try {
       final storedId = await SqlStorageConst.getUserId() ?? userModel.id ?? '';
@@ -447,9 +448,14 @@ class EditProfileProvider extends ChangeNotifier {
 
       userModel.id = customerId.toString();
 
-      final fcmToken = userModel.fcmToken == null || userModel.fcmToken!.isEmpty
-          ? await NotificationService.getToken()
-          : userModel.fcmToken;
+      // On logout we deliberately send an empty token to stop pushes. Without
+      // this flag the empty value was immediately overwritten with a freshly
+      // fetched token, so logout never actually detached the device.
+      final fcmToken = preserveEmptyFcmToken
+          ? ''
+          : (userModel.fcmToken == null || userModel.fcmToken!.isEmpty
+              ? await NotificationService.getToken()
+              : userModel.fcmToken);
       userModel.fcmToken = fcmToken;
 
       final headers = await getHeaders();

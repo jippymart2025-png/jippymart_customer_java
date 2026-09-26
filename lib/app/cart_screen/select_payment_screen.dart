@@ -911,7 +911,11 @@ class _ConfirmPayBarState extends State<_ConfirmPayBar> {
               'Payment could not be initiated. Please try again.'.tr,
             );
           }
-          _syncTapLockWithPaymentConfig();
+          // _handleConfirmPay already stored the current key, so
+          // _syncTapLockWithPaymentConfig() could never detect a change and
+          // left "Confirm & Pay" permanently disabled. Unlock explicitly.
+          _tapLocked = false;
+          if (mounted) setState(() {});
           return;
         }
         await controller.placeOrder(context);
@@ -926,6 +930,9 @@ class _ConfirmPayBarState extends State<_ConfirmPayBar> {
       // Success path navigates to OrderPlacingScreen; popping here can cause route jank/races.
     } catch (e) {
       controller.endOrderProcessing();
+      // Same reasoning as above: never leave the button latched.
+      _tapLocked = false;
+      if (mounted) setState(() {});
       if (context.mounted) {
         ShowToastDialog.closeLoader();
         ShowToastDialog.showToast('An error occurred. Please try again.'.tr);

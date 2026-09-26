@@ -252,7 +252,32 @@ class CartControllerProvider extends ChangeNotifier {
   Timer? _syncPricesDebounceTimer;
 
   // ============ PUBLIC PROPERTIES ============
-  late OrderPlacingProvider orderPlacingProvider;
+  /// Set from [initFunction] / [providerInitializer] when an
+  /// [OrderPlacingProvider] is reachable above this provider.
+  ///
+  /// Deliberately not `late`: when it was unset, line ~9314 threw a
+  /// LateInitializationError *inside* the try/catch that also wrapped
+  /// `Get.off(...)`, so the order was created but the confirmation screen
+  /// never appeared and the user was left staring at the payment screen.
+  OrderPlacingProvider? orderPlacingProvider;
+
+  /// The most recently created order, kept so [OrderPlacingScreen] can seed
+  /// its own [OrderPlacingProvider] if the one held here was never assigned.
+  /// Without this the screen sat on an infinite "Placing…" spinner because
+  /// `isLoading` defaults to true and only `initFunction` clears it.
+  OrderModel? _pendingOrderConfirmation;
+
+  OrderModel? get pendingOrderConfirmation => _pendingOrderConfirmation;
+
+  /// Hands the created order to the confirmation screen.
+  void publishOrderConfirmation(OrderModel order) {
+    _pendingOrderConfirmation = order;
+    try {
+      orderPlacingProvider?.initFunction(orderModels: order);
+    } catch (e) {
+      debugPrint('⚠️ [ORDER_CREATION] Could not seed OrderPlacingProvider: $e');
+    }
+  }
   final CartProvider cartProvider = CartProvider();
   TextEditingController reMarkController = TextEditingController();
   Map<String, dynamic>? _martDeliverySettings;
@@ -573,6 +598,34 @@ class CartControllerProvider extends ChangeNotifier {
     return null;
   }
 
+  /// Pulls the created order id out of a POST /mobile/orders response.
+  ///
+  /// Accepts every envelope the backend is known to return:
+  ///   `{data: {order_id}}`, `{data: {orderId}}`, `{order_id}`,
+  ///   `{orderId}`, `{data: {id}}`, `{id}`.
+  static String? _extractOrderIdFromResponse(dynamic response) {
+    if (response is! Map) return null;
+
+    final data = response['data'];
+
+    final candidates = <dynamic>[
+      if (data is Map) data['order_id'],
+      if (data is Map) data['orderId'],
+      if (data is Map) data['id'],
+      response['order_id'],
+      response['orderId'],
+      response['orderID'],
+      response['id'],
+    ];
+
+    for (final value in candidates) {
+      if (value == null) continue;
+      final text = value.toString().trim();
+      if (text.isNotEmpty && text != 'null') return text;
+    }
+    return null;
+  }
+
   static String _paymentInitiateConfigKey(
     String method,
     bool wallet,
@@ -606,7 +659,17 @@ class CartControllerProvider extends ChangeNotifier {
     try {
       payload = await buildPaymentInitiatePayload();
       if (payload == null) {
+        // This used to return false with no message, so processPayment aborted
+        // and the user got no feedback at all.
         debugPrint('[INITIATE_PAYMENT] Could not build payment payload');
+        if (!_isCalculatingPrice) {
+          try {
+            ShowToastDialog.showToast(
+              'Could not prepare your order. Please check your cart, '
+              'delivery address and outlet, then try again.'.tr,
+            );
+          } catch (_) {}
+        }
         return false;
       }
       final response = await CartApiService.initiatePayment(payload: payload);
@@ -907,7 +970,13 @@ class CartControllerProvider extends ChangeNotifier {
       _codGuardTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
         if (!isCodAvailableForCurrentOrder &&
             selectedPaymentMethod == PaymentGateway.cod.name) {
-          selectedPaymentMethod = PaymentGateway.razorpay.name;
+          // Use the setter so the payment tiles actually rebuild. Assigning
+          // the field directly left the COD tile looking selected while
+          // razorpay was being used.
+          debugPrint(
+            '[COD_GUARD] COD unavailable for current order, falling back to razorpay',
+          );
+          setSelectedPaymentMethod(PaymentGateway.razorpay.name);
         }
       });
     });
@@ -3243,8 +3312,10 @@ class CartControllerProvider extends ChangeNotifier {
         _unlockGlobal();
 
         if (paymentSucceeded) {
+          // Publish first so the screen can self-seed if needed; navigation is
+          // deliberately not nested inside the provider call.
+          publishOrderConfirmation(orderModel);
           try {
-            orderPlacingProvider.initFunction(orderModels: orderModel);
             Get.off(() => const OrderPlacingScreen());
           } catch (e) {
             debugPrint(
@@ -7924,9 +7995,13 @@ class CartControllerProvider extends ChangeNotifier {
       return;
     }
 
-    // The WebView closes the checkout when it lands on these URLs.
-    formFields['surl'] ??= 'https://jippymart.com/success';
-    formFields['furl'] ??= 'https://jippymart.com/failure';
+    // The WebView closes the checkout when it lands on these redirect URLs.
+    // Prefer what the backend returned, but fall back to the backend webhook
+    // endpoints so the redirect is still detected when the payload omits them.
+    formFields['surl'] ??=
+        '${AppConst.defaultBaseUrl}div/payments/payu/success';
+    formFields['furl'] ??=
+        '${AppConst.defaultBaseUrl}div/payments/payu/failure';
 
     // ── Hash resolution ──
     // When the build is compiled with `--dart-define=PAYU_SALT=<merchant-salt>`,
@@ -9161,9 +9236,23 @@ class CartControllerProvider extends ChangeNotifier {
 
       final responseData = json.decode(response.body);
 
-      if (responseData['success'] != true) {
+      debugPrint('🌐 [ORDER_CREATION] Raw response: ${response.body}');
+
+      // The backend is not consistent about the envelope: some deployments
+      // return {success:true, data:{order_id}}, others return a flat
+      // {orderId, success:null} DTO. Deciding on `success` alone therefore
+      // aborted COD orders that the server had in fact accepted, leaving the
+      // user on the payment screen forever.
+      //
+      // The presence of an order id is the authoritative signal.
+      final createdOrderId = _extractOrderIdFromResponse(responseData);
+      final explicitlyFailed = responseData['success'] == false;
+
+      if (explicitlyFailed && createdOrderId == null) {
         final backendMessage =
-            responseData['message']?.toString() ?? 'Unable to place your order';
+            responseData['message']?.toString() ??
+            responseData['errorMessage']?.toString() ??
+            'Unable to place your order';
 
         debugPrint('❌ [ORDER_CREATION] API returned error: $backendMessage');
 
@@ -9181,13 +9270,15 @@ class CartControllerProvider extends ChangeNotifier {
 
         return;
       }
-      if (responseData['data'] == null ||
-          responseData['data']['order_id'] == null) {
-        debugPrint('❌ [ORDER_CREATION] API response missing order_id');
+
+      if (createdOrderId == null) {
+        debugPrint(
+          '❌ [ORDER_CREATION] Could not find an order id in the response',
+        );
         throw Exception('API response missing order_id');
       }
 
-      orderModel.id = responseData['data']['order_id'];
+      orderModel.id = createdOrderId;
       debugPrint(
         '✅ [ORDER_CREATION] Order created successfully with ID: ${orderModel.id}',
       );
@@ -9212,7 +9303,7 @@ class CartControllerProvider extends ChangeNotifier {
 
       additionalTasks.add(
         _createOrderBilling(
-          responseData['data']['order_id'],
+          createdOrderId,
           roundedTotalAmount.toStringAsFixed(0),
           surgePercent.toInt(),
           adminFee,
@@ -9305,9 +9396,11 @@ class CartControllerProvider extends ChangeNotifier {
       }
       endOrderProcessing();
 
-      // 🔑 OPTIMIZATION: Navigation wrapped in try-catch (may fail if app is backgrounded)
+      // Publish the order so the screen can render it even if the provider
+      // reference above was never assigned.
+      publishOrderConfirmation(orderModel);
+
       try {
-        orderPlacingProvider.initFunction(orderModels: orderModel);
         Get.off(() => OrderPlacingScreen());
       } catch (e) {
         debugPrint(

@@ -2,8 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- APNs environment. "production" is required for TestFlight / App Store
+	     builds; a debug build signed against a development profile needs
+	     "development" or pushes will not arrive. -->
 	<key>aps-environment</key>
-	<string>development</string>
+	<string>production</string>
 	<!-- Associated Domains for Universal Links -->
 	<!-- This enables your app to handle https://jippymart.in links -->
 	<key>com.apple.developer.associated-domains</key>

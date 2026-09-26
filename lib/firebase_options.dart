@@ -58,17 +58,20 @@ class DefaultFirebaseOptions {
     storageBucket: 'jippymart-27c08.firebasestorage.app',
   );
 
+  // Must stay in sync with ios/Runner/GoogleService-Info.plist
+  // (BUNDLE_ID = com.jippymart.customerapp).
+  // A mismatch here makes FCM token registration silently fail on iOS.
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyBydj69AqryFDCzRSUcc5EwbGm0vXdGvsQ',
-    appId: '1:592427852800:ios:7042882250c904b6d1a4e5',
+    appId: '1:592427852800:ios:3b701d73ac33636cd1a4e5',
     messagingSenderId: '592427852800',
     projectId: 'jippymart-27c08',
     databaseURL: 'https://jippymart-27c08-default-rtdb.firebaseio.com',
     storageBucket: 'jippymart-27c08.firebasestorage.app',
     androidClientId:
-        '592427852800-0vu074e55r2l1v3h48qi8bkvd6u52h20.apps.googleusercontent.com',
+        '592427852800-g14719r8ejten85kqpasqmpqnhetce2q.apps.googleusercontent.com',
     iosClientId:
-        '592427852800-g5n5pd4to75i8lq6l22o37bsbq8jfir3.apps.googleusercontent.com',
-    iosBundleId: 'com.foodies.customer.ios',
+        '592427852800-uundiahpds8a59odbjgrcii6mvkjjo07.apps.googleusercontent.com',
+    iosBundleId: 'com.jippymart.customerapp',
   );
 }

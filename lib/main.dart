@@ -24,6 +24,7 @@ import 'package:jippymart_customer/utils/app_lifecycle_logger.dart';
 import 'package:jippymart_customer/utils/cache_manager.dart';
 import 'package:jippymart_customer/utils/crash_prevention.dart';
 import 'package:jippymart_customer/utils/native_lock_prevention.dart';
+import 'package:jippymart_customer/utils/notification_service.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
 import 'package:jippymart_customer/utils/production_logger.dart';
 import 'package:jippymart_customer/utils/smartlook_anr_fix.dart';
@@ -142,6 +143,28 @@ void main() async {
   // PREFERENCES
   // ------------------------------------------------------------
   await Preferences.initPref();
+
+  // ------------------------------------------------------------
+  // PUSH NOTIFICATIONS
+  //
+  // Must run after Firebase + GetStorage, and must run at all:
+  // this was previously only reachable through a provider that was never
+  // instantiated, so no push was ever received.
+  //
+  // Kept off the critical path so a notification failure cannot delay the
+  // first frame.
+  // ------------------------------------------------------------
+  unawaited(
+    NotificationService.instance
+        .initInfo()
+        .timeout(const Duration(seconds: 10))
+        .catchError((Object e, StackTrace st) {
+      if (kDebugMode) {
+        debugPrint('⚠️ NotificationService init error: $e');
+        debugPrintStack(stackTrace: st);
+      }
+    }),
+  );
 
   // ------------------------------------------------------------
   // MART FIRESTORE SERVICE

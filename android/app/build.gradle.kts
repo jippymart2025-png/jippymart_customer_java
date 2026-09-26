@@ -3,6 +3,10 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    // Reads android/app/google-services.json so Firebase Messaging can
+    // register with FCM. Required on Android; iOS configures itself from
+    // GoogleService-Info.plist.
+    id("com.google.gms.google-services")
 }
 
 android {

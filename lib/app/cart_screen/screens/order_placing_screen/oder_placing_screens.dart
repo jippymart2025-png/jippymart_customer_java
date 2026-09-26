@@ -67,7 +67,29 @@ class _OrderPlacingScreenState extends State<OrderPlacingScreen>
         cart.syncWalletBalanceFromWallet(wp.moneyBalanceRupees);
       } catch (_) {}
     });
-    }
+
+    // Self-heal: if nothing seeded the OrderPlacingProvider, take the order
+    // from the cart provider. Without this the screen would sit on the loading
+    // state forever, because `isLoading` only clears inside initFunction.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      try {
+        final placing = context.read<OrderPlacingProvider>();
+        final hasOrder =
+            placing.orderModel.id != null &&
+            placing.orderModel.id.toString().isNotEmpty;
+        if (hasOrder) return;
+
+        final pending = context.read<CartControllerProvider>()
+            .pendingOrderConfirmation;
+        if (pending == null) return;
+
+        placing.initFunction(orderModels: pending);
+      } catch (e) {
+        debugPrint('⚠️ [ORDER_PLACING] Could not self-seed order: $e');
+      }
+    });
+  }
 
     @override
     void dispose() {

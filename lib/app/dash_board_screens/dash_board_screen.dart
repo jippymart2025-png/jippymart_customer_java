@@ -50,7 +50,7 @@ class _DashBoardScreenState extends State<DashBoardScreen>
   Timer? _countdownTimer;
   Timer? _orderStatusRefreshTimer;
   bool _isOrderRefreshInFlight = false;
-  final NotificationService _notificationService = NotificationService();
+  final NotificationService _notificationService = NotificationService.instance;
   int _lastCartItemCount = 0;
   int _lastAppliedStatusBarIndex = -1;
   DateTime? _lastBackPressTime;
