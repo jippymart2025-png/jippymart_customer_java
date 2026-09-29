@@ -352,9 +352,11 @@ class _LocationBodyState extends State<_LocationBody> {
   @override
   void initState() {
     super.initState();
-    widget.controller.syncOutOfServiceFromConstant();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+
+      widget.controller.syncOutOfServiceFromConstant();
       widget.controller.refreshZoneStatus(context);
     });
   }

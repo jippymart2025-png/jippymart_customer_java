@@ -5,7 +5,6 @@ import 'package:http/http.dart' as http;
 import 'package:jippymart_customer/models/coin_ledger_model.dart';
 import 'package:jippymart_customer/models/customer_wallet_model.dart';
 import 'package:jippymart_customer/models/daily_checkin_model.dart';
-import 'package:jippymart_customer/models/referral_model.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
@@ -21,41 +20,6 @@ class WalletApiService {
   String get _base => AppConst.baseUrl;
 
   Future<Map<String, String>> _headers() => getHeaders();
-
-  /// GET /wallet/config — runtime wallet configuration (coins, check-in, referral).
-  ///
-  /// Supported response shapes:
-  /// 1) { "success": true, "data": { "version": 1, "wallet_config": { ... } } }
-  /// 2) { "version": 1, "wallet_config": { ... } }
-  // Future<Map<String, dynamic>?> getWalletConfig() async {
-  //   try {
-  //     final uri = Uri.parse('${_base}wallet/config');
-  //     final response = await http
-  //         .get(uri, headers: await _headers())
-  //         .timeout(const Duration(seconds: 15));
-  //     if (response.statusCode != 200) return null;
-  //     final map = json.decode(response.body) as Map<String, dynamic>?;
-  //     if (map == null) return null;
-  //
-  //     // If backend sends { success, data }, prefer data node.
-  //     if (map.containsKey('data')) {
-  //       if (map.containsKey('success') && map['success'] != true) {
-  //         return null;
-  //       }
-  //       final data = map['data'];
-  //       if (data is Map<String, dynamic>) {
-  //         return data;
-  //       }
-  //       return Map<String, dynamic>.from(data as Map);
-  //     }
-  //
-  //     // Otherwise treat the whole JSON as config root
-  //     return map;
-  //   } catch (e) {
-  //     print('[WalletApiService] getWalletConfig error: $e');
-  //     return null;
-  //   }
-  // }
 
   /// GET /co/customers/wallet/{customerId} — returns the customer wallet.
   /// Backend responds with a flat object (see [CustomerWalletModel]); a
