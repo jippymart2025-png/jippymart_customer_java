@@ -787,7 +787,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       // loadFavorites().then((_) {
       //   if (hasListeners) notifyListeners();
       // });
-      _loadAttributes();
+      // _loadAttributes();
       // Do not re-call getOutletDetails immediately after serving cache.
       // Pull-to-refresh uses forceRefresh when a fresh fetch is needed.
     } catch (e) {
@@ -2555,19 +2555,19 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     );
   }
 
-  Future<void> _loadAttributes() async {
-    try {
-      final result = await FireStoreUtils.getAttributes();
-      if (result != null) {
-        attributesList = result;
-      } else {
-        attributesList = [];
-      }
-    } catch (e) {
-      debugPrint('❌ Error loading attributes: $e');
-      attributesList = [];
-    }
-  }
+  // Future<void> _loadAttributes() async {
+  //   try {
+  //     final result = await FireStoreUtils.getAttributes();
+  //     if (result != null) {
+  //       attributesList = result;
+  //     } else {
+  //       attributesList = [];
+  //     }
+  //   } catch (e) {
+  //     debugPrint('❌ Error loading attributes: $e');
+  //     attributesList = [];
+  //   }
+  // }
 
   bool canAcceptOrders() => RestaurantStatusUtils.canAcceptOrders(vendorModel);
 

@@ -2707,7 +2707,7 @@ class _DealsScreenState extends State<DealsScreen>
     if (mounted) setState(() => _isLoading = true);
 
     try {
-      await _loadPromotions();
+      // await _loadPromotions();
       _lastLoadTime = DateTime.now();
     } catch (e) {
       debugPrint('[DEALS] Load error: $e');
@@ -2722,55 +2722,55 @@ class _DealsScreenState extends State<DealsScreen>
     }
   }
 
-  Future<void> _loadPromotions() async {
-    final z = _currentZoneId ?? _effectiveZoneId();
-    if (z == null || z.isEmpty) {
-      debugPrint('[PROMOTIONS] Zone ID missing');
-      return;
-    }
-    _currentZoneId = z;
-
-    try {
-      final key = 'promotions_${z}_${DateTime.now().millisecondsSinceEpoch}';
-
-      final data = await CacheManager().getOrSet<List<Map<String, dynamic>>>(
-        key,
-        () => ApiQueueManager().enqueue<List<Map<String, dynamic>>>(
-          priority: RequestPriority.normal,
-          key: key,
-          request: () => FireStoreUtils.getAllActivePromotions(zoneId: z),
-        ),
-        type: CacheType.general,
-      );
-
-      if (data.isEmpty) {
-        if (mounted) setState(() => _promotionsList = []);
-        return;
-      }
-
-      final promos = data
-          .take(100)
-          .map((p) => PromotionModel.fromJson(p))
-          .toList();
-
-      final vendorIds = promos
-          .map((p) => p.restaurantId)
-          .where((id) => id.isNotEmpty)
-          .toSet()
-          .toList();
-
-      await _preCacheVendors(vendorIds);
-      final sorted = await _sortByOpenStatus(promos);
-
-      if (mounted) setState(() => _promotionsList = sorted);
-
-      debugPrint('[DEALS] Loaded ${sorted.length} promotions for zone $z');
-    } catch (e, stackTrace) {
-      debugPrint('[PROMOTIONS] Error: $e');
-      debugPrint('$stackTrace');
-      if (mounted) setState(() => _promotionsList = []);
-    }
-  }
+  // Future<void> _loadPromotions() async {
+  //   final z = _currentZoneId ?? _effectiveZoneId();
+  //   if (z == null || z.isEmpty) {
+  //     debugPrint('[PROMOTIONS] Zone ID missing');
+  //     return;
+  //   }
+  //   _currentZoneId = z;
+  //
+  //   try {
+  //     final key = 'promotions_${z}_${DateTime.now().millisecondsSinceEpoch}';
+  //
+  //     final data = await CacheManager().getOrSet<List<Map<String, dynamic>>>(
+  //       key,
+  //       () => ApiQueueManager().enqueue<List<Map<String, dynamic>>>(
+  //         priority: RequestPriority.normal,
+  //         key: key,
+  //         // request: () => FireStoreUtils.getAllActivePromotions(zoneId: z),
+  //       ),
+  //       type: CacheType.general,
+  //     );
+  //
+  //     if (data.isEmpty) {
+  //       if (mounted) setState(() => _promotionsList = []);
+  //       return;
+  //     }
+  //
+  //     final promos = data
+  //         .take(100)
+  //         .map((p) => PromotionModel.fromJson(p))
+  //         .toList();
+  //
+  //     final vendorIds = promos
+  //         .map((p) => p.restaurantId)
+  //         .where((id) => id.isNotEmpty)
+  //         .toSet()
+  //         .toList();
+  //
+  //     await _preCacheVendors(vendorIds);
+  //     final sorted = await _sortByOpenStatus(promos);
+  //
+  //     if (mounted) setState(() => _promotionsList = sorted);
+  //
+  //     debugPrint('[DEALS] Loaded ${sorted.length} promotions for zone $z');
+  //   } catch (e, stackTrace) {
+  //     debugPrint('[PROMOTIONS] Error: $e');
+  //     debugPrint('$stackTrace');
+  //     if (mounted) setState(() => _promotionsList = []);
+  //   }
+  // }
 
   Future<void> _preCacheVendors(List<String> ids) async {
     await Future.wait(

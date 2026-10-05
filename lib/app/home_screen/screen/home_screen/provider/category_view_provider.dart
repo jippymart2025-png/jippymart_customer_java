@@ -33,39 +33,79 @@ class CategoryViewProvider extends ChangeNotifier {
 
   Future<List<VendorCategoryModel>> _fetchHomeVendorCategory() async {
     List<VendorCategoryModel> list = [];
+
     try {
       final headers = await getHeaders();
+
       final url = Uri.parse(
         '${AppConst.defaultBaseUrl}fm/getHomeOrAllCategories?filter=HOME',
       );
+
       debugPrint('[CATEGORY_API] Fetching home categories from: $url');
+
       final response = await http
           .get(url, headers: headers)
           .timeout(_networkTimeout);
-      debugPrint("getHomeVendorCategory ${response.body}");
-      if (response.statusCode == 200) {
-        final jsonResponse = json.decode(response.body);
-        if (jsonResponse['success'] == true) {
-          List<dynamic> data = jsonResponse['data'];
-          for (var item in data) {
-            VendorCategoryModel categoryModel = VendorCategoryModel.fromJson(
-              item,
-            );
-            list.add(categoryModel);
-          }
-          debugPrint('[CATEGORY_API] Home categories loaded: ${list.length}');
-        } else {
-          debugPrint('[CATEGORY_API] API returned success: false');
-        }
-      } else {
-        debugPrint('[CATEGORY_API] HTTP error: ${response.statusCode}');
+
+      debugPrint('[CATEGORY_API] Status: ${response.statusCode}');
+
+      debugPrint('[CATEGORY_API] Response: ${response.body}');
+
+      if (response.statusCode != 200) {
         throw Exception('Failed to load categories: ${response.statusCode}');
       }
+
+      final jsonResponse = json.decode(response.body);
+
+      if (jsonResponse['success'] != true) {
+        debugPrint('[CATEGORY_API] API returned success: false');
+        return list;
+      }
+
+      // IMPORTANT:
+      // data is an object, not a List.
+      final data = jsonResponse['data'];
+
+      if (data == null || data is! Map<String, dynamic>) {
+        debugPrint('[CATEGORY_API] Invalid data format');
+        return list;
+      }
+
+      // IMPORTANT:
+      // The actual category list is inside data['categories'].
+      final categories = data['categories'];
+
+      if (categories == null || categories is! List) {
+        debugPrint('[CATEGORY_API] categories is missing or not a List');
+        return list;
+      }
+
+      for (final item in categories) {
+        if (item is Map<String, dynamic>) {
+          final categoryModel = VendorCategoryModel.fromJson(item);
+
+          list.add(categoryModel);
+
+          debugPrint(
+            '[CATEGORY_API] '
+            'id=${categoryModel.categoryId}, '
+            'name=${categoryModel.categoryName}, '
+            'type=${categoryModel.categoryType}, '
+            'image=${categoryModel.categoryImageUrl}',
+          );
+        }
+      }
+
+      debugPrint('[CATEGORY_API] Home categories loaded: ${list.length}');
+
+      return list;
     } on TimeoutException catch (e) {
       debugPrint('[CATEGORY_API] Timeout fetching categories: $e');
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('[CATEGORY_API] Error fetching categories: $e');
+      debugPrint('[CATEGORY_API] StackTrace: $stackTrace');
     }
+
     return list;
   }
 }

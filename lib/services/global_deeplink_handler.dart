@@ -1,5 +1,4 @@
 import 'package:jippymart_customer/app/category_service/category__service_screen.dart';
-import 'package:jippymart_customer/app/DealsScreen/DealsScreen.dart';
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart'
     show CartControllerProvider;
 import 'package:jippymart_customer/app/dash_board_screens/dash_board_screen.dart';
@@ -7,7 +6,6 @@ import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_pr
 import 'package:jippymart_customer/app/favourite_screens/provider/favorite_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
-import 'package:jippymart_customer/app/mart/screens/mart_categorhy_details_screen/mart_category_detail_screen.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/mart_navigation_screen.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/provider/mart_navigation_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_product_details_screen/mart_product_details_screen.dart';

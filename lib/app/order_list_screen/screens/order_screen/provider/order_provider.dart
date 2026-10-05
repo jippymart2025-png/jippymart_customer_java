@@ -115,31 +115,32 @@ class OrderProvider extends ChangeNotifier {
 
       // Fetch first page (paginated API)
       final result =
-          await FireStoreUtils.fetchOrdersFromFirestorePage(
-            page: 1,
-            limit: kOrdersPageSize,
-            isRefresh: forceRefresh, // 🔥 THIS IS THE FIX
-          ).timeout(
-            const Duration(seconds: 30),
-            onTimeout: () {
-              log('[OrderController] Order fetch timeout');
-              return const OrdersPageResult(
-                orders: [],
-                pagination: OrdersPagination(
-                  total: 0,
-                  perPage: kOrdersPageSize,
-                  currentPage: 1,
-                  totalPages: 1,
-                  hasNext: false,
-                  hasPrev: false,
-                ),
-              );
-            },
+      await FireStoreUtils.fetchOrdersFromFirestorePage(
+        page: 1,
+        limit: kOrdersPageSize,
+        isRefresh: forceRefresh, // 🔥 THIS IS THE FIX
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          log('[OrderController] Order fetch timeout');
+          return const OrdersPageResult(
+            orders: [],
+            pagination: OrdersPagination(
+              total: 0,
+              perPage: kOrdersPageSize,
+              currentPage: 1,
+              totalPages: 1,
+              hasNext: false,
+              hasPrev: false,
+            ),
           );
+        },
+      );
 
       if (kDebugMode) {
         log(
-          '[OrderController] Fetched ${result.orders.length} orders (page 1), hasNext=${result.pagination.hasNext}',
+          '[OrderController] Fetched ${result.orders
+              .length} orders (page 1), hasNext=${result.pagination.hasNext}',
         );
       }
 
@@ -244,30 +245,32 @@ class OrderProvider extends ChangeNotifier {
     try {
       final nextPage = _currentPage + 1;
       final result =
-          await FireStoreUtils.fetchOrdersFromFirestorePage(
-            page: nextPage,
-            limit: kOrdersPageSize,
-          ).timeout(
-            const Duration(seconds: 20),
-            onTimeout: () => const OrdersPageResult(
-              orders: [],
-              pagination: OrdersPagination(
-                total: 0,
-                perPage: kOrdersPageSize,
-                currentPage: 1,
-                totalPages: 1,
-                hasNext: false,
-                hasPrev: false,
-              ),
-            ),
-          );
+      await FireStoreUtils.fetchOrdersFromFirestorePage(
+        page: nextPage,
+        limit: kOrdersPageSize,
+      ).timeout(
+        const Duration(seconds: 20),
+        onTimeout: () =>
+        const OrdersPageResult(
+          orders: [],
+          pagination: OrdersPagination(
+            total: 0,
+            perPage: kOrdersPageSize,
+            currentPage: 1,
+            totalPages: 1,
+            hasNext: false,
+            hasPrev: false,
+          ),
+        ),
+      );
 
       if (result.orders.isEmpty) {
         hasNextPage = false;
       } else {
         _currentPage = nextPage;
         hasNextPage = result.pagination.hasNext;
-        final merged = List<OrderModel>.from(allList)..addAll(result.orders);
+        final merged = List<OrderModel>.from(allList)
+          ..addAll(result.orders);
         merged.sort((a, b) {
           final aTs = a.createdAt;
           final bTs = b.createdAt;
@@ -280,7 +283,8 @@ class OrderProvider extends ChangeNotifier {
       }
       if (kDebugMode) {
         log(
-          '[OrderController] Loaded more: +${result.orders.length}, total=${allList.length}, hasNext=$hasNextPage',
+          '[OrderController] Loaded more: +${result.orders
+              .length}, total=${allList.length}, hasNext=$hasNextPage',
         );
       }
     } catch (e, st) {
@@ -347,7 +351,7 @@ class OrderProvider extends ChangeNotifier {
             double.tryParse(
               order.specialDiscount!['special_discount'].toString(),
             ) ??
-            0.0;
+                0.0;
       }
 
       double sgst = 0.0;
@@ -377,9 +381,10 @@ class OrderProvider extends ChangeNotifier {
 
       final totalAmount =
           (subTotal - (order.discount ?? 0.0) - specialDiscountAmount) +
-          taxAmount +
-          (double.tryParse(order.deliveryCharge?.toString() ?? '0.0') ?? 0.0) +
-          (double.tryParse(order.tipAmount?.toString() ?? '0.0') ?? 0.0);
+              taxAmount +
+              (double.tryParse(order.deliveryCharge?.toString() ?? '0.0') ??
+                  0.0) +
+              (double.tryParse(order.tipAmount?.toString() ?? '0.0') ?? 0.0);
 
       return totalAmount;
     } catch (e) {
@@ -851,7 +856,7 @@ class OrderProvider extends ChangeNotifier {
   Future<OrderModel?> getOrderById(String orderId) async {
     // Check cache first
     final cachedOrder = allList.firstWhere(
-      (order) => order.id == orderId,
+          (order) => order.id == orderId,
       orElse: () => OrderModel(),
     );
 
@@ -860,7 +865,6 @@ class OrderProvider extends ChangeNotifier {
     }
 
     // Fetch single order
-    return await FireStoreUtils.getOrderById(orderId);
   }
 
   // Method to force set the correct user ID
@@ -868,7 +872,8 @@ class OrderProvider extends ChangeNotifier {
     if (Constant.userModel != null) {
       FireStoreUtils.backendUserId = Constant.userModel!.id;
       log(
-        '[OrderController] Force set backendUserId to: ${Constant.userModel!.id}',
+        '[OrderController] Force set backendUserId to: ${Constant.userModel!
+            .id}',
       );
     }
   }

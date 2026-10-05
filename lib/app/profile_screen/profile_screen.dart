@@ -7,7 +7,6 @@ import 'package:jippymart_customer/app/profile_screen/provider/my_profile_provid
 import 'package:jippymart_customer/app/profile_screen/widget/buildSliverHeader.dart';
 import 'package:jippymart_customer/app/terms_and_condition/terms_and_condition_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
-import 'package:jippymart_customer/services/database_helper.dart';
 import 'package:jippymart_customer/services/device_token_service.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/custom_dialog_box.dart';

@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 import 'package:jippymart_customer/models/order_model.dart';
-import 'package:jippymart_customer/services/database_helper.dart';
 
 class OrderPlacingProvider extends ChangeNotifier {
   bool isLoading = true;

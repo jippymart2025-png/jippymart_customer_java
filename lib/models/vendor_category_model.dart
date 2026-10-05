@@ -19,16 +19,18 @@ class VendorCategoryModel {
 
   factory VendorCategoryModel.fromJson(Map<String, dynamic> json) {
     final rawId = json['categoryId'] ?? json['id'];
+
     final parsedId = rawId is int
         ? rawId
         : int.tryParse(rawId?.toString() ?? '') ?? 0;
+
+    final imageUrl = json['categoryImageUrl'] ?? json['photo'];
 
     return VendorCategoryModel(
       categoryId: parsedId,
       categoryName: (json['categoryName'] ?? json['title'] ?? '').toString(),
       categoryType: (json['categoryType'] ?? json['vType'] ?? '').toString(),
-      categoryImageUrl:
-          (json['categoryImageUrl'] ?? json['photo'] ?? '').toString(),
+      categoryImageUrl: imageUrl?.toString() ?? '',
       reviewAttributes: json['review_attributes'] is List
           ? List<dynamic>.from(json['review_attributes'])
           : null,
@@ -50,8 +52,7 @@ class VendorCategoryModel {
 
   bool? get publish => categoryId != 0;
 
-  String? get vType =>
-      categoryType.isEmpty ? 'restaurant' : categoryType;
+  String? get vType => categoryType.isEmpty ? 'restaurant' : categoryType;
 
   Map<String, dynamic> toJson() {
     return {

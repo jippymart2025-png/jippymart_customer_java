@@ -35,14 +35,23 @@ class SendNotification {
           if (decoded is Map<String, dynamic>) {
             jsonData = decoded;
           } else if (kDebugMode) {
-            dev.log('Service JSON URL did not return a JSON object', name: 'SendNotification');
+            dev.log(
+              'Service JSON URL did not return a JSON object',
+              name: 'SendNotification',
+            );
           }
         } else if (kDebugMode) {
-          dev.log('Service JSON URL returned ${response.statusCode}', name: 'SendNotification');
+          dev.log(
+            'Service JSON URL returned ${response.statusCode}',
+            name: 'SendNotification',
+          );
         }
       } catch (e) {
         if (kDebugMode) {
-          dev.log('Failed to fetch service JSON from URL: $e', name: 'SendNotification');
+          dev.log(
+            'Failed to fetch service JSON from URL: $e',
+            name: 'SendNotification',
+          );
         }
       }
     }
@@ -53,7 +62,10 @@ class SendNotification {
           jsonData = json.decode(cached) as Map<String, dynamic>;
         } catch (e) {
           if (kDebugMode) {
-            dev.log('Invalid cached service JSON: $e', name: 'SendNotification');
+            dev.log(
+              'Invalid cached service JSON: $e',
+              name: 'SendNotification',
+            );
           }
         }
       }
@@ -105,7 +117,9 @@ class SendNotification {
   /// True if we have either a service JSON URL or cached inline JSON to get FCM token.
   static bool _hasServiceAccountSource() {
     if (Constant.jsonNotificationFileURL.trim().isNotEmpty) return true;
-    if (Preferences.getString(Preferences.fcmServiceAccountJson).trim().isNotEmpty) {
+    if (Preferences.getString(
+      Preferences.fcmServiceAccountJson,
+    ).trim().isNotEmpty) {
       return true;
     }
     return false;
@@ -119,69 +133,82 @@ class SendNotification {
     try {
       _ensureNotificationSettingsFromCache();
       if (Constant.senderId.isEmpty) {
-        if (kDebugMode) dev.log('Send failed: senderId empty', name: 'SendNotification');
+        if (kDebugMode)
+          dev.log('Send failed: senderId empty', name: 'SendNotification');
         return false;
       }
       final trimmedToken = token.trim();
       if (trimmedToken.isEmpty) {
-        if (kDebugMode) dev.log('Send failed: recipient token empty', name: 'SendNotification');
+        if (kDebugMode)
+          dev.log(
+            'Send failed: recipient token empty',
+            name: 'SendNotification',
+          );
         return false;
       }
       if (!_hasServiceAccountSource()) {
-        if (kDebugMode) dev.log('Send failed: no service account source', name: 'SendNotification');
+        if (kDebugMode)
+          dev.log(
+            'Send failed: no service account source',
+            name: 'SendNotification',
+          );
         return false;
       }
       String accessToken;
       try {
         accessToken = await getAccessToken();
       } catch (e) {
-        if (kDebugMode) dev.log('Send failed: getAccessToken: $e', name: 'SendNotification');
+        if (kDebugMode)
+          dev.log('Send failed: getAccessToken: $e', name: 'SendNotification');
         return false;
       }
       NotificationModel? notificationModel;
       try {
-        notificationModel = await FireStoreUtils.getNotificationContent(type);
+        // notificationModel = await FireStoreUtils.getNotificationContent(type);
       } catch (_) {
         // Use defaults below
       }
       final title = notificationModel?.subject ?? 'New order';
       final body = notificationModel?.message ?? 'You have a new order';
-      final response = await http.post(
-        Uri.parse(
-          'https://fcm.googleapis.com/v1/projects/${Constant.senderId}/messages:send',
-        ),
-        headers: <String, String>{
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $accessToken',
-        },
-        body: jsonEncode(<String, dynamic>{
-          'message': {
-            'token': trimmedToken,
-            'notification': {
-              'body': body,
-              'title': title,
+      final response = await http
+          .post(
+            Uri.parse(
+              'https://fcm.googleapis.com/v1/projects/${Constant.senderId}/messages:send',
+            ),
+            headers: <String, String>{
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $accessToken',
             },
-            'android': {
-              'priority': 'high',
-              'notification': {
-                // No channel_id: uses app default channel so notification shows even if vendor app has no "order_channel"
-                'default_sound': true,
-                'default_vibrate_timings': true,
-                'default_light_settings': true,
-                'click_action': 'FLUTTER_NOTIFICATION_CLICK',
+            body: jsonEncode(<String, dynamic>{
+              'message': {
+                'token': trimmedToken,
+                'notification': {'body': body, 'title': title},
+                'android': {
+                  'priority': 'high',
+                  'notification': {
+                    // No channel_id: uses app default channel so notification shows even if vendor app has no "order_channel"
+                    'default_sound': true,
+                    'default_vibrate_timings': true,
+                    'default_light_settings': true,
+                    'click_action': 'FLUTTER_NOTIFICATION_CLICK',
+                  },
+                },
+                'data':
+                    payload?.map((k, v) => MapEntry(k, v?.toString() ?? '')) ??
+                    {},
               },
-            },
-            'data': payload?.map((k, v) => MapEntry(k, v?.toString() ?? '')) ?? {},
-          },
-        }),
-      ).timeout(
-        const Duration(seconds: 15),
-        onTimeout: () => throw StateError('FCM request timed out'),
-      );
+            }),
+          )
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () => throw StateError('FCM request timed out'),
+          );
       final ok = response.statusCode == 200;
       if (!ok && kDebugMode) {
         // 404/UNREGISTERED = vendor token stale (e.g. restaurant app reinstalled). Fix: restaurant app must re-upload FCM token. See RESTAURANT_APP_FCM_TOKEN_FIX.md.
-        final isUnregistered = response.statusCode == 404 || response.body.contains('UNREGISTERED');
+        final isUnregistered =
+            response.statusCode == 404 ||
+            response.body.contains('UNREGISTERED');
         dev.log(
           'FCM rejected: ${response.statusCode}${isUnregistered ? " (token stale/unregistered)" : ""}',
           name: 'SendNotification',
@@ -251,7 +278,8 @@ class SendNotification {
           'message': {
             'token': token.trim(),
             'notification': {'body': message, 'title': title},
-            'data': payload?.map((k, v) => MapEntry(k, v?.toString() ?? '')) ?? {},
+            'data':
+                payload?.map((k, v) => MapEntry(k, v?.toString() ?? '')) ?? {},
           },
         }),
       );

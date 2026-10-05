@@ -6,7 +6,6 @@ import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/restaurant_list_screen/provider/restaurant_list_provider.dart';
-import 'package:jippymart_customer/config/smartlook_config.dart';
 import 'package:jippymart_customer/firebase_options.dart';
 import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/services/final_deep_link_service.dart';
@@ -17,7 +16,6 @@ import 'package:jippymart_customer/services/mart_firestore_service.dart';
 import 'package:jippymart_customer/services/mobile_deep_link_service.dart';
 import 'package:jippymart_customer/services/order_review_service.dart';
 import 'package:jippymart_customer/services/pending_deep_link_handler.dart';
-import 'package:jippymart_customer/services/smartlook_service.dart';
 import 'package:jippymart_customer/services/remote_config_service.dart';
 import 'package:jippymart_customer/utils/anr_monitor.dart';
 import 'package:jippymart_customer/utils/app_lifecycle_logger.dart';
@@ -27,8 +25,6 @@ import 'package:jippymart_customer/utils/native_lock_prevention.dart';
 import 'package:jippymart_customer/utils/notification_service.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
 import 'package:jippymart_customer/utils/production_logger.dart';
-import 'package:jippymart_customer/utils/smartlook_anr_fix.dart';
-import 'package:jippymart_customer/utils/system_call_optimizer.dart';
 import 'package:jippymart_customer/utils/text_processing_anr_fix.dart';
 import 'package:jippymart_customer/services/network_connectivity_service.dart';
 import 'package:jippymart_customer/services/wallet_config_service.dart';
@@ -248,9 +244,9 @@ void _runDeferredInits(BuildContext context) {
       if (kDebugMode) print('⚠️ ANR/monitor init error: $e');
     }
     try {
-      await SmartlookANRFix.configureSmartlook();
-      await PlatformANRPrevention.preventMIUIANR();
-      await PlatformANRPrevention.preventCiscoANR();
+      // await SmartlookANRFix.configureSmartlook();
+      // await PlatformANRPrevention.preventMIUIANR();
+      // await PlatformANRPrevention.preventCiscoANR();
     } catch (e) {
       if (kDebugMode) print('⚠️ Smartlook/Platform ANR init error: $e');
     }
@@ -497,7 +493,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         // ============================================
         // EAGER PROVIDERS - Used immediately at startup
         // ============================================
-        // GlobalSettingsProvider: Riverpod globalSettingsNotifierProvider
         prv.ChangeNotifierProvider(create: (_) => SplashProvider()),
         prv.ChangeNotifierProvider(create: (_) => CartProvider()),
         prv.ChangeNotifierProvider(create: (_) => HomeProvider()),
@@ -516,7 +511,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ),
         prv.ChangeNotifierProvider(create: (_) => RestaurantListProvider()),
         prv.ChangeNotifierProvider(create: (_) => StoryProvider()),
-        // prv.ChangeNotifierProvider(create: (_) => AllAdvertisementProvider()),
         prv.ChangeNotifierProvider(create: (_) => CategoryServiceProvider()),
         prv.ChangeNotifierProvider(create: (_) => FavouriteProvider()),
         prv.ChangeNotifierProvider(create: (_) => MartProvider()),

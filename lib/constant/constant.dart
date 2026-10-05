@@ -12,16 +12,13 @@ import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/admin_commission.dart';
 import 'package:jippymart_customer/models/coupon_model.dart';
 import 'package:jippymart_customer/models/currency_model.dart';
-import 'package:jippymart_customer/models/email_template_model.dart';
 import 'package:jippymart_customer/models/language_model.dart';
 import 'package:jippymart_customer/models/wallet_config.dart';
 import 'package:jippymart_customer/models/mail_setting.dart';
-import 'package:jippymart_customer/models/order_model.dart';
 import 'package:jippymart_customer/models/tax_model.dart';
 import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
-import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
 import 'package:jippymart_customer/widget/permission_dialog.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -226,26 +223,26 @@ class Constant {
     try {
       // Handle null or empty price
       if (price == null || price.isEmpty) {
-        print('⚠️ productCommissionPrice: Price is null or empty');
+        debugPrint('⚠️ productCommissionPrice: Price is null or empty');
         return "0";
       }
       final double basePrice = double.tryParse(price) ?? 0.0;
       if (basePrice == 0.0) {
-        print('⚠️ productCommissionPrice: Unable to parse price: $price');
+        debugPrint('⚠️ productCommissionPrice: Unable to parse price: $price');
         return "0";
       }
       String commission = "0";
       commission = price;
       if (kDebugMode) {
-        print('💰 Commission Calculation:');
-        print('   - Base Price: $basePrice');
-        print('   - Final Commission: $commission');
+        debugPrint('💰 Commission Calculation:');
+        debugPrint('   - Base Price: $basePrice');
+        debugPrint('   - Final Commission: $commission');
       }
       return commission;
     } catch (e) {
-      print('❌ Error in productCommissionPrice: $e');
-      print('   - Vendor: ${vendorModel.title}');
-      print('   - Price: $price');
+      debugPrint('❌ Error in productCommissionPrice: $e');
+      debugPrint('   - Vendor: ${vendorModel.title}');
+      debugPrint('   - Price: $price');
       return "0"; // Return safe default
     }
   }
@@ -387,7 +384,7 @@ class Constant {
   }) {
     // Enhanced null safety and validation checks
     if (lat1.isEmpty || lng1.isEmpty || lat2.isEmpty || lng2.isEmpty) {
-      print(
+      debugPrint(
         'DEBUG: getDistance - Invalid coordinates: lat1=$lat1, lng1=$lng1, lat2=$lat2, lng2=$lng2',
       );
       return "0.0";
@@ -405,7 +402,7 @@ class Constant {
           lat1Double > 90 ||
           lat2Double < -90 ||
           lat2Double > 90) {
-        print(
+        debugPrint(
           'DEBUG: getDistance - Invalid latitude range: lat1=$lat1Double, lat2=$lat2Double',
         );
         return "0.0";
@@ -415,7 +412,7 @@ class Constant {
           lng1Double > 180 ||
           lng2Double < -180 ||
           lng2Double > 180) {
-        print(
+        debugPrint(
           'DEBUG: getDistance - Invalid longitude range: lng1=$lng1Double, lng2=$lng2Double',
         );
         return "0.0";
@@ -436,7 +433,7 @@ class Constant {
 
       return distance.toStringAsFixed(2);
     } catch (e) {
-      print('DEBUG: getDistance - Error parsing coordinates: $e');
+      debugPrint('DEBUG: getDistance - Error parsing coordinates: $e');
       return "0.0";
     }
   }
@@ -547,7 +544,7 @@ class Constant {
   }
 
   static String timestampToDateTime(Timestamp timestamp) {
-    print("timestampToDateTime $timestamp ");
+    debugPrint("timestampToDateTime $timestamp ");
     DateTime dateTime = timestamp.toDate();
     return DateFormat('MMM dd,yyyy hh:mm aa').format(dateTime);
   }
@@ -655,12 +652,12 @@ class Constant {
 
       try {
         final sendReport = await send(message, smtpServer);
-        print('Message sent: $sendReport');
+        debugPrint('Message sent: $sendReport');
       } on MailerException catch (e) {
         print(e);
-        print('Message not sent.');
+        debugPrint('Message not sent.');
         for (var p in e.problems) {
-          print('Problem: ${p.code}: ${p.msg}');
+          debugPrint('Problem: ${p.code}: ${p.msg}');
         }
       }
     }
@@ -698,211 +695,6 @@ class Constant {
     }
 
     return uri;
-  }
-
-  static sendOrderEmail({required OrderModel orderModel}) async {
-    EmailTemplateModel? emailTemplateModel =
-        await FireStoreUtils.getEmailTemplates("new_order_placed");
-    if (emailTemplateModel != null) {
-      String firstHTML = """
-       <table style="width: 100%; border-collapse: collapse; border: 1px solid rgb(0, 0, 0);">
-    <thead>
-        <tr>
-            <th style="text-align: left; border: 1px solid rgb(0, 0, 0);">Product Name<br></th>
-            <th style="text-align: left; border: 1px solid rgb(0, 0, 0);">Quantity<br></th>
-            <th style="text-align: left; border: 1px solid rgb(0, 0, 0);">Price<br></th>
-            <th style="text-align: left; border: 1px solid rgb(0, 0, 0);">Extra Item Price<br></th>
-            <th style="text-align: left; border: 1px solid rgb(0, 0, 0);">Total<br></th>
-        </tr>
-    </thead>
-    <tbody>
-    """;
-
-      String newString = emailTemplateModel.message.toString();
-      newString = newString.replaceAll(
-        "{username}",
-        "${Constant.userModel!.firstName} ${Constant.userModel!.lastName}",
-      );
-      newString = newString.replaceAll("{orderid}", orderModel.id.toString());
-      newString = newString.replaceAll(
-        "{date}",
-        DateFormat('yyyy-MM-dd').format(orderModel.createdAt!.toDate()),
-      );
-      newString = newString.replaceAll(
-        "{address}",
-        orderModel.address!.getFullAddress(),
-      );
-      newString = newString.replaceAll(
-        "{paymentmethod}",
-        orderModel.paymentMethod.toString(),
-      );
-
-      double deliveryCharge = 0.0;
-      double total = 0.0;
-      double specialDiscount = 0.0;
-      double discount = 0.0;
-      double taxAmount = 0.0;
-      double tipValue = 0.0;
-      String specialLabel =
-          '(${orderModel.specialDiscount!['special_discount_label']}${orderModel.specialDiscount!['specialType'] == "amount" ? currencyModel!.symbol : "%"})';
-      List<String> htmlList = [];
-
-      if (orderModel.deliveryCharge != null) {
-        deliveryCharge = double.parse(orderModel.deliveryCharge.toString());
-      }
-      if (orderModel.tipAmount != null) {
-        tipValue = double.parse(orderModel.tipAmount.toString());
-      }
-      for (var element in orderModel.products!) {
-        // Check if this item has a promotional price
-        final hasPromo = element.promoId != null && element.promoId!.isNotEmpty;
-
-        double itemPrice;
-        if (hasPromo) {
-          // Use promotional price for calculations
-          itemPrice = double.parse(element.price.toString());
-        } else if (double.parse(element.discountPrice.toString()) <= 0) {
-          // No promotion, no discount - use regular price
-          itemPrice = double.parse(element.price.toString());
-        } else {
-          // Regular discount (non-promo) - use discount price
-          itemPrice = double.parse(element.discountPrice.toString());
-        }
-
-        if (element.extrasPrice != null &&
-            element.extrasPrice!.isNotEmpty &&
-            double.parse(element.extrasPrice!) != 0.0) {
-          total +=
-              double.parse(element.quantity.toString()) *
-              double.parse(element.extrasPrice!);
-        }
-        total += double.parse(element.quantity.toString()) * itemPrice;
-
-        List<dynamic>? addon = element.extras;
-        String extrasDisVal = '';
-        for (int i = 0; i < addon!.length; i++) {
-          extrasDisVal +=
-              '${addon[i].toString().replaceAll("\"", "")} ${(i == addon.length - 1) ? "" : ","}';
-        }
-
-        // Display the correct price in the HTML (promotional price if available)
-        String displayPrice = hasPromo
-            ? element.price.toString()
-            : element.price.toString();
-        String displayTotal =
-            ((double.parse(element.quantity.toString()) *
-                        double.parse(element.extrasPrice!) +
-                    (double.parse(element.quantity.toString()) * itemPrice)))
-                .toString();
-
-        String product =
-            """
-        <tr>
-            <td style="width: 20%; border-top: 1px solid rgb(0, 0, 0);">${element.name}</td>
-            <td style="width: 20%; border: 1px solid rgb(0, 0, 0);" rowspan="2">${element.quantity}</td>
-            <td style="width: 20%; border: 1px solid rgb(0, 0, 0);" rowspan="2">${amountShow(amount: displayPrice)}</td>
-            <td style="width: 20%; border: 1px solid rgb(0, 0, 0);" rowspan="2">${amountShow(amount: element.extrasPrice.toString())}</td>
-            <td style="width: 20%; border: 1px solid rgb(0, 0, 0);" rowspan="2">${amountShow(amount: displayTotal)}</td>
-        </tr>
-        <tr>
-            <td style="width: 20%;">${extrasDisVal.isEmpty ? "" : "Extra Item : $extrasDisVal"}</td>
-        </tr>
-    """;
-        htmlList.add(product);
-      }
-
-      if (orderModel.specialDiscount!.isNotEmpty) {
-        specialDiscount = double.parse(
-          orderModel.specialDiscount!['special_discount'].toString(),
-        );
-      }
-
-      if (orderModel.couponId != null && orderModel.couponId!.isNotEmpty) {
-        discount = double.parse(orderModel.discount.toString());
-      }
-
-      List<String> taxHtmlList = [];
-      if (taxList != null) {
-        for (var element in taxList!) {
-          taxAmount =
-              taxAmount +
-              calculateTax(
-                amount: (total - discount - specialDiscount).toString(),
-                taxModel: element,
-              );
-          String taxHtml =
-              """<span style="font-size: 1rem;">${element.title}: ${amountShow(
-                amount: calculateTax(amount: (total - discount - specialDiscount).toString(), taxModel: element).toString(),
-              )}${taxList!.indexOf(element) == taxList!.length - 1 ? "</span>" : "<br></span>"}""";
-          taxHtmlList.add(taxHtml);
-        }
-      }
-
-      var totalamount =
-          orderModel.deliveryCharge == null ||
-              orderModel.deliveryCharge!.isEmpty
-          ? total + taxAmount - discount - specialDiscount
-          : total +
-                taxAmount +
-                double.parse(orderModel.deliveryCharge!) +
-                double.parse(orderModel.tipAmount!) -
-                discount -
-                specialDiscount;
-
-      newString = newString.replaceAll(
-        "{subtotal}",
-        amountShow(amount: total.toString()),
-      );
-      newString = newString.replaceAll(
-        "{coupon}",
-        orderModel.couponId.toString(),
-      );
-      newString = newString.replaceAll(
-        "{discountamount}",
-        amountShow(amount: orderModel.discount.toString()),
-      );
-      newString = newString.replaceAll("{specialcoupon}", specialLabel);
-      newString = newString.replaceAll(
-        "{specialdiscountamount}",
-        amountShow(amount: specialDiscount.toString()),
-      );
-      newString = newString.replaceAll(
-        "{shippingcharge}",
-        amountShow(amount: deliveryCharge.toString()),
-      );
-      newString = newString.replaceAll(
-        "{tipamount}",
-        amountShow(amount: tipValue.toString()),
-      );
-      newString = newString.replaceAll(
-        "{totalAmount}",
-        amountShow(amount: totalamount.toString()),
-      );
-
-      String tableHTML = htmlList.join();
-      String lastHTML = "</tbody></table>";
-      newString = newString.replaceAll(
-        "{productdetails}",
-        firstHTML + tableHTML + lastHTML,
-      );
-      newString = newString.replaceAll("{taxdetails}", taxHtmlList.join());
-      newString = newString.replaceAll(
-        "{newwalletbalance}.",
-        amountShow(amount: Constant.userModel!.walletAmount.toString()),
-      );
-
-      String subjectNewString = emailTemplateModel.subject.toString();
-      subjectNewString = subjectNewString.replaceAll(
-        "{orderid}",
-        orderModel.id.toString(),
-      );
-      await sendMail(
-        subject: subjectNewString,
-        isAdmin: emailTemplateModel.isSendToAdmin,
-        body: newString,
-        recipients: [Constant.userModel!.email],
-      );
-    }
   }
 
   static double calculateDistance(
@@ -958,7 +750,7 @@ class Constant {
   static bool isPointInPolygon(LatLng point, List<GeoPoint> polygon) {
     // Input validation
     if (polygon.isEmpty || polygon.length < 3) {
-      print('[ZONE_DEBUG] Invalid polygon: empty or less than 3 points');
+      debugPrint('[ZONE_DEBUG] Invalid polygon: empty or less than 3 points');
       return false;
     }
 
@@ -998,7 +790,7 @@ class Constant {
 
     // Debug logging for troubleshooting
     if (kDebugMode) {
-      print(
+      debugPrint(
         '[ZONE_DEBUG] Point (${point.latitude}, ${point.longitude}) -> $crossings crossings -> $isInside',
       );
     }

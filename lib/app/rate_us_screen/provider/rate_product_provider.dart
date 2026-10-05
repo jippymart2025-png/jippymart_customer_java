@@ -290,7 +290,7 @@ class RateProductProvider extends ChangeNotifier {
 
         if (isSaved == true) {
           // Update product
-          await FireStoreUtils.setProduct(productModel);
+          // await FireStoreUtils.setProduct(productModel);
 
           // Optionally update vendor
           // await FireStoreUtils.updateVendor(vendorModel);

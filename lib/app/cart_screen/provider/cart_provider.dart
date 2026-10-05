@@ -33,7 +33,6 @@ import 'package:jippymart_customer/payment/payu/payuwebview.dart';
 import 'package:jippymart_customer/services/cart_api_service.dart';
 import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/services/paytm_service.dart';
-import 'package:jippymart_customer/services/smartlook_service.dart';
 import 'package:jippymart_customer/services/coupon_filter_service.dart';
 import 'package:jippymart_customer/services/wallet_api_service.dart';
 import 'package:jippymart_customer/services/mart_vendor_service.dart';
@@ -794,7 +793,7 @@ class CartControllerProvider extends ChangeNotifier {
     final normalized = <String, dynamic>{};
     raw.forEach((key, value) {
       if (key == null || value is! Map) return;
-      normalized[key.toString()] = Map<String, dynamic>.from(value as Map);
+      normalized[key.toString()] = Map<String, dynamic>.from(value);
     });
     return normalized;
   }
@@ -1409,7 +1408,7 @@ class CartControllerProvider extends ChangeNotifier {
           if (_cachedTaxList != null) {
             Constant.taxList = _cachedTaxList;
           } else if (Constant.taxList == null) {
-            Constant.taxList = await FireStoreUtils.getTaxList();
+            // Constant.taxList = await FireStoreUtils.getTaxList();
             _cachedTaxList = Constant.taxList;
           }
 
@@ -5694,8 +5693,8 @@ class CartControllerProvider extends ChangeNotifier {
       }
 
       // ✅ Stop recording BEFORE SDK
-      SmartlookService().stopRecording();
-      smartlookStopped = true;
+      // SmartlookService().stopRecording();
+      // smartlookStopped = true;
 
       // ✅ Close loader BEFORE opening SDK (IMPORTANT)
       ShowToastDialog.closeLoader();
@@ -5708,11 +5707,6 @@ class CartControllerProvider extends ChangeNotifier {
         callbackUrl: callbackUrl,
         isStaging: isStaging,
       );
-
-      // ✅ Restart Smartlook
-      if (smartlookStopped) {
-        SmartlookService().startRecording();
-      }
 
       if (result == null || result['error'] == true) {
         ShowToastDialog.showToast("Payment failed".tr);
@@ -5745,9 +5739,9 @@ class CartControllerProvider extends ChangeNotifier {
     } finally {
       ShowToastDialog.closeLoader();
 
-      if (smartlookStopped) {
-        SmartlookService().startRecording();
-      }
+      // if (smartlookStopped) {
+      //   SmartlookService().startRecording();
+      // }
     }
   }
 
@@ -6371,8 +6365,6 @@ class CartControllerProvider extends ChangeNotifier {
           }
         }());
       }
-
-      additionalTasks.add(Constant.sendOrderEmail(orderModel: orderModel));
 
       await Future.wait(additionalTasks);
 
