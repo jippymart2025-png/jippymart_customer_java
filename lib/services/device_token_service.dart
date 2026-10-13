@@ -191,9 +191,7 @@ class DeviceTokenService {
     required String fcmToken,
   }) async {
     try {
-      final url = Uri.parse(
-        'http://192.168.0.14:8084/api/notification/device-token',
-      );
+      final url = Uri.parse('${AppConst.baseUrl}notification/device-token');
       final response = await SafeHttpClient.safePost(
         url,
         headers: await getHeaders(),
