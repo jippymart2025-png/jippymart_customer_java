@@ -27,7 +27,11 @@ class _OtpScreenState extends State<OtpScreen> {
     super.initState();
     _controller = Provider.of<LoginProvider>(context, listen: false);
     if (!_controller.resendTimerStarted) {
-      _controller.startResendTimer();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_controller.resendTimerStarted) {
+          _controller.startResendTimer();
+        }
+      });
     }
   }
 
@@ -167,6 +171,7 @@ class _OtpScreenState extends State<OtpScreen> {
         keyboardType: TextInputType.phone,
         hintCharacter: "-",
         controller: _otpController,
+        autoDisposeControllers: false,
         textStyle: TextStyle(
           color: AppThemeData.grey900,
           fontFamily: AppThemeData.regular,

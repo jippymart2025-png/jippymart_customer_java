@@ -11,6 +11,7 @@ import 'package:jippymart_customer/services/location_service.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
+import 'package:jippymart_customer/utils/location_zone_navigation.dart';
 import 'package:jippymart_customer/widget/osm_map/map_picker_page.dart';
 import 'package:jippymart_customer/widget/osm_map/place_model.dart';
 import 'package:flutter/material.dart';
@@ -83,29 +84,25 @@ class LocationPermissionScreen extends StatelessWidget {
 
     try {
       final box = GetStorage();
-      final cachedAuth = box.read('cached_auth_check');
 
-      if (cachedAuth != null) {
-        final cachedTime = DateTime.parse(cachedAuth['timestamp']);
-        if (DateTime.now().difference(cachedTime) <
-            const Duration(minutes: 1)) {
-          if (cachedAuth['hasAuth'] == true) {
-            Get.offAll(const DashBoardScreen());
-            return;
-          } else {
-            Get.offAll(const PhoneNumberScreen());
-            return;
+      bool isLoggedIn = false;
+      if (Constant.userModel?.id != null &&
+          Constant.userModel!.id!.isNotEmpty) {
+        isLoggedIn = true;
+      } else {
+        isLoggedIn = await SqlStorageConst.isUserLoggedIn();
+        if (!isLoggedIn) {
+          final cachedUser = await SqlStorageConst.getUserModelFromCache();
+          if (cachedUser != null &&
+              cachedUser.id != null &&
+              cachedUser.id!.isNotEmpty) {
+            Constant.userModel = cachedUser;
+            isLoggedIn = true;
           }
         }
       }
 
-      final apiToken = await SqlStorageConst.getAuthToken();
-      final userId = await SqlStorageConst.getFirebaseId();
-
-      if (apiToken != null &&
-          apiToken.isNotEmpty &&
-          userId != null &&
-          userId.isNotEmpty) {
+      if (isLoggedIn) {
         box.write('cached_auth_check', {
           'hasAuth': true,
           'timestamp': DateTime.now().toIso8601String(),
@@ -120,17 +117,18 @@ class LocationPermissionScreen extends StatelessWidget {
             }
           });
         }
-        Get.offAll(const DashBoardScreen());
+        Get.offAll(() => const DashBoardScreen());
       } else {
-        box.write('cached_auth_check', {
-          'hasAuth': false,
-          'timestamp': DateTime.now().toIso8601String(),
-        });
-        Get.offAll(const PhoneNumberScreen());
+        box.remove('cached_auth_check');
+        Get.offAll(() => const PhoneNumberScreen());
       }
     } catch (e) {
       print('[LOCATION_PERMISSION] Error: $e');
-      Get.offAll(const PhoneNumberScreen());
+      if (Constant.userModel != null) {
+        Get.offAll(() => const DashBoardScreen());
+      } else {
+        Get.offAll(() => const PhoneNumberScreen());
+      }
     }
   }
 
@@ -673,15 +671,17 @@ class _BottomPanel extends StatelessWidget {
                             return;
                           addressListProvider.initFunction(context: context);
                           final result = await Get.to(
-                            const AddressListScreen(),
+                            () => const AddressListScreen(),
                           );
                           if (result != null && result is ShippingAddress) {
                             final ctx = Get.context ?? context;
-                            final inZone = await homeProvider
-                                .changeLocationAddressFunction(
-                                  context: ctx,
-                                  addressModel: result,
-                                );
+                            final inZone =
+                                LocationZoneNavigation.isInServiceArea() ||
+                                await homeProvider
+                                    .changeLocationAddressFunction(
+                                      context: ctx,
+                                      addressModel: result,
+                                    );
                             if (inZone) {
                               final splashProvider =
                                   Provider.of<SplashProvider>(

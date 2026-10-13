@@ -168,14 +168,31 @@ class SignupProvider extends ChangeNotifier {
   ) async {
     try {
       if (response['token'] != null) {
-        await saveAuthToken(response['token'].toString());
+        // Handle legacy 'token' field - treat as access token, no refresh token
+        final token = response['token'].toString();
+        if (token.isNotEmpty) {
+          await saveAuthToken(
+            accessToken: token,
+            refreshToken: '', // No refresh token from legacy flow
+          );
+        }
       } else if (response['accessToken'] != null) {
         await saveAuthToken(
-          response['accessToken'].toString(),
+          accessToken: response['accessToken'].toString(),
+          refreshToken: response['refreshToken']?.toString() ?? '',
           tokenType: response['tokenType']?.toString() ?? 'Bearer',
         );
       } else if (authToken.isNotEmpty) {
-        await saveAuthToken(authToken);
+        // Retrieve existing tokens from storage
+        final existingTokens = await getAuthTokens();
+        if (existingTokens != null &&
+            existingTokens['accessToken']?.isNotEmpty == true &&
+            existingTokens['refreshToken']?.isNotEmpty == true) {
+          await saveAuthToken(
+            accessToken: existingTokens['accessToken']!.toString(),
+            refreshToken: existingTokens['refreshToken']!.toString(),
+          );
+        }
       }
 
       final storedCustomerId = await SqlStorageConst.getUserId() ?? '';

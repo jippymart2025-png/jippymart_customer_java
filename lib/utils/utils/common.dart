@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:jippymart_customer/utils/production_logger.dart';
 
 const FlutterSecureStorage storage = FlutterSecureStorage();
@@ -22,26 +24,47 @@ String formatAuthToken(String token, {String tokenType = 'Bearer'}) {
 }
 
 /// Save token after login
-Future<void> saveAuthToken(
-  String accessToken, {
+Future<void> saveAuthToken({
+  required String accessToken,
+  required String refreshToken,
   String tokenType = 'Bearer',
 }) async {
   if (accessToken.trim().isEmpty) return;
 
-  await writeSecureStorage(
-    'api_token',
-    formatAuthToken(accessToken, tokenType: tokenType),
-  );
+  final formatted = formatAuthToken(accessToken, tokenType: tokenType);
+  final tokenMap = {
+    'accessToken': formatted,
+    'refreshToken': refreshToken,
+  };
+
+  await writeSecureStorage('auth_token_map', jsonEncode(tokenMap));
+  await writeSecureStorage('api_token', formatted);
 }
 
-/// Get saved token
-Future<String?> getAuthToken() async {
-  return await readSecureStorage('api_token');
+/// Get saved tokens
+Future<Map<String, String>?> getAuthTokens() async {
+  final mapString = await readSecureStorage('auth_token_map');
+  if (mapString == null || mapString.isEmpty) return null;
+
+  try {
+    final map = jsonDecode(mapString) as Map<String, dynamic>;
+    return {
+      'accessToken': map['accessToken']?.toString() ?? '',
+      'refreshToken': map['refreshToken']?.toString() ?? '',
+    };
+  } catch (_) {
+    return null;
+  }
 }
 
 /// Remove token on logout
 Future<void> clearAuthToken() async {
+  await deleteSecureStorage('auth_token_map');
   await deleteSecureStorage('api_token');
+  try {
+    final box = GetStorage();
+    box.remove('cached_auth_check');
+  } catch (_) {}
 }
 
 /// Reads a value from secure storage, automatically recovering when the stored
@@ -99,11 +122,13 @@ Future<void> _resetSecureStorage() async {
 
 /// Common headers for all API calls
 Future<Map<String, String>> getHeaders() async {
-  final token = await getAuthToken();
+  final tokens = await getAuthTokens();
 
+  final accessToken = tokens != null ? tokens['accessToken'] : null;
   return {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    if (token != null && token.isNotEmpty) 'Authorization': token,
+    if (accessToken != null && accessToken.isNotEmpty)
+      'Authorization': accessToken,
   };
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'dart:convert';
 import 'package:jippymart_customer/app/auth_screen/otp_screen.dart';
 import 'package:jippymart_customer/app/auth_screen/phone_number_screen.dart';
@@ -236,7 +237,8 @@ class LoginProvider extends ChangeNotifier {
     authToken = response['accessToken']?.toString() ?? '';
 
     await saveAuthToken(
-      authToken,
+      accessToken: authToken,
+      refreshToken: response['refreshToken']?.toString() ?? '',
       tokenType: response['tokenType']?.toString() ?? 'Bearer',
     );
 
@@ -248,6 +250,14 @@ class LoginProvider extends ChangeNotifier {
 
     if (customerId != null && customerId.isNotEmpty) {
       await writeSecureStorage('user_id', customerId);
+      await writeSecureStorage('firebase_id', customerId);
+      try {
+        final box = GetStorage();
+        box.write('cached_auth_check', {
+          'hasAuth': true,
+          'timestamp': DateTime.now().toIso8601String(),
+        });
+      } catch (_) {}
     }
 
     // ============================================================

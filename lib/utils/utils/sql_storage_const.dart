@@ -1,3 +1,4 @@
+import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
 
@@ -5,21 +6,52 @@ class SqlStorageConst {
   static UserModel userModel = UserModel();
 
   static Future<bool> isUserLoggedIn() async {
-    final token = await readSecureStorage('api_token');
-    return token != null;
+    if (Constant.userModel?.id != null && Constant.userModel!.id!.isNotEmpty) {
+      return true;
+    }
+    final token = await getAuthToken();
+    if (token != null && token.trim().isNotEmpty) {
+      return true;
+    }
+    final userId = await getUserId();
+    if (userId != null && userId.trim().isNotEmpty) {
+      return true;
+    }
+    return false;
   }
 
   static Future<String?> getAuthToken() async {
-    return await readSecureStorage('api_token');
+    final tokens = await getAuthTokens();
+    final access = tokens?['accessToken'];
+    if (access != null && access.trim().isNotEmpty) {
+      return access.trim();
+    }
+    final legacy = await readSecureStorage('api_token');
+    if (legacy != null && legacy.trim().isNotEmpty) {
+      return legacy.trim();
+    }
+    return null;
   }
 
   static Future<String?> getFirebaseId() async {
-    return await readSecureStorage('firebase_id');
+    final fbId = await readSecureStorage('firebase_id');
+    if (fbId != null && fbId.trim().isNotEmpty) return fbId.trim();
+    final userId = await readSecureStorage('user_id');
+    if (userId != null && userId.trim().isNotEmpty) return userId.trim();
+    if (Constant.userModel?.firebaseId != null &&
+        Constant.userModel!.firebaseId!.isNotEmpty) {
+      return Constant.userModel!.firebaseId;
+    }
+    return Constant.userModel?.id;
   }
 
   /// Backend user id (e.g. user_26c52283-...) used by firestore/orders API.
   static Future<String?> getUserId() async {
-    return await readSecureStorage('user_id');
+    final userId = await readSecureStorage('user_id');
+    if (userId != null && userId.trim().isNotEmpty) return userId.trim();
+    final fbId = await readSecureStorage('firebase_id');
+    if (fbId != null && fbId.trim().isNotEmpty) return fbId.trim();
+    return Constant.userModel?.id;
   }
 
   static Future<String?> getUserName() async {
@@ -59,7 +91,10 @@ class SqlStorageConst {
     }
 
     await writeSecureStorage('user_id', storedId);
-    await writeSecureStorage('firebase_id', user.firebaseId);
+    await writeSecureStorage(
+      'firebase_id',
+      _valueOr(user.firebaseId, storedId),
+    );
     await writeSecureStorage('user_firstName', storedFirstName);
     await writeSecureStorage('user_lastName', storedLastName);
     await writeSecureStorage('user_email', storedEmail);
