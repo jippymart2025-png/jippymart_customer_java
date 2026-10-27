@@ -564,6 +564,15 @@ void showProductOptionsBottomSheet({
                               }
 
                               if (allVariantInfo.isNotEmpty) {
+                                // Also add selected variants to provider's selectedVariants list
+                                for (final index in selectedOptionIndices) {
+                                  final selected = options[index];
+                                  final sku = selected.variantSku ?? '';
+                                  if (sku.isNotEmpty && !controller.selectedVariants.contains(sku)) {
+                                    controller.selectedVariants.add(sku);
+                                  }
+                                }
+
                                 controller.addToCart(
                                   productModel: productModel,
                                   price: optionPrice,

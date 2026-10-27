@@ -2208,6 +2208,25 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       }
     }
 
+    // If product has variants, require at least one variant selected
+    // before allowing addons to be added
+    if (productHasVariants && productModel.addOnsTitle != null &&
+        productModel.addOnsTitle!.isNotEmpty && productModel.addOnsPrice != null) {
+      if (selectedVariants.isEmpty) {
+        debugPrint(
+          '[addToCart] Cannot add addons: No variant selected for product with variants',
+        );
+        // Show toast and return - cannot proceed with addons
+        ShowToastDialog.showToast(
+          'Please select at least one variant before adding addons'.tr,
+        );
+        // Reset addon selection since it's not valid
+        selectedAddOns.clear();
+        notifyListeners();
+        return;
+      }
+    }
+
     // Add add-ons to apiVariants
     if (productModel.addOnsTitle != null &&
         productModel.addOnsTitle!.isNotEmpty &&
