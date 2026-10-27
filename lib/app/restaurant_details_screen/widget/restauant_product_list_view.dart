@@ -1,21 +1,25 @@
 import 'dart:math';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
+import 'package:get/get.dart';
+import 'package:provider/provider.dart';
+import 'package:jippymart_customer/app/auth_screen/phone_number_screen.dart';
+import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/product_options_bottom_sheet.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/restaurant_without_categories_wiget.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/resturant_product_details_view.dart';
 import 'package:jippymart_customer/constant/constant.dart' show Constant;
+import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/models/vendor_category_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
+import 'package:jippymart_customer/themes/custom_dialog_box.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
-import 'package:jippymart_customer/app/auth_screen/phone_number_screen.dart';
-import 'package:jippymart_customer/themes/custom_dialog_box.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_svg/svg.dart';
-import 'package:get/get.dart';
-import 'package:provider/provider.dart';
 import '../../../constant/show_toast_dialog.dart';
 import '../../../themes/responsive.dart';
 import '../provider/PromotionIndicator.dart';
@@ -63,9 +67,11 @@ class ProductListView extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: rs.hPad),
       sliver: SliverMainAxisGroup(
         slivers: [
-          for (int index = 0;
-              index < controller.vendorCategoryList.length;
-              index++)
+          for (
+            int index = 0;
+            index < controller.vendorCategoryList.length;
+            index++
+          )
             ..._buildCategorySlivers(
               context,
               controller.vendorCategoryList[index],
@@ -638,10 +644,6 @@ class _AddToCartButton extends StatelessWidget {
     return hasOptions && !hasItemAttributes;
   }
 
-  bool get _isInCart => controller.isProductInCart(_productId);
-
-  int get _cartQty => controller.productQuantityInCart(_productId);
-
   Map<String, dynamic>? get _promo => controller.getActivePromotionForProduct(
     productId: _productId,
     restaurantId: productModel.vendorID ?? '',
@@ -675,18 +677,59 @@ class _AddToCartButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (_hasVariantsOrAddons) {
-      return _buildVariantButton(context);
-    } else if (_hasOptionsOnly) {
-      return _buildOptionsButton(context);
-    } else if (_isInCart) {
-      return _buildInCartButton(context);
-    } else {
-      return _buildAddButton(context);
-    }
+    return Consumer2<RestaurantDetailsProvider, CartControllerProvider>(
+      builder: (context, restaurantDetailsProvider, cartController, _) {
+        final productId = _productId;
+
+        CartProductModel? existingCartProduct;
+        try {
+          existingCartProduct = HomeProvider.cartItem.firstWhere(
+            (item) =>
+                item.id != null &&
+                (item.id == productId ||
+                    item.id!.startsWith('$productId~') ||
+                    (int.tryParse(productId) != null &&
+                        (item.id == int.tryParse(productId)!.toString() ||
+                            item.id!.startsWith(
+                              '${int.tryParse(productId)!}~',
+                            )))),
+          );
+        } catch (_) {
+          existingCartProduct = null;
+        }
+
+        final int cartQty =
+            existingCartProduct?.quantity ??
+            restaurantDetailsProvider.productQuantityInCart(productId);
+        final bool isInCart = cartQty > 0;
+
+        if (_hasVariantsOrAddons) {
+          return _buildVariantButton(context, restaurantDetailsProvider);
+        } else if (_hasOptionsOnly) {
+          return _buildOptionsButton(context, restaurantDetailsProvider);
+        } else if (isInCart) {
+          return _buildInCartButton(
+            context,
+            cartQty: cartQty,
+            existingCartProduct: existingCartProduct,
+            cartController: cartController,
+            restaurantDetailsProvider: restaurantDetailsProvider,
+          );
+        } else {
+          return _buildAddButton(
+            context,
+            cartController: cartController,
+            restaurantDetailsProvider: restaurantDetailsProvider,
+          );
+        }
+      },
+    );
   }
 
-  Widget _buildVariantButton(BuildContext context) {
+  Widget _buildVariantButton(
+    BuildContext context,
+    RestaurantDetailsProvider restaurantDetailsProvider,
+  ) {
     return SizedBox(
       width: double.infinity,
       height: rs.btnHeight,
@@ -701,12 +744,12 @@ class _AddToCartButton extends StatelessWidget {
                 _showLoginDialog(context);
                 return;
               }
-              controller.selectedVariants.clear();
-              controller.selectedIndexVariants.clear();
-              controller.selectedIndexArray.clear();
-              controller.selectedAddOns.clear();
-              controller.quantity = 1;
-              controller.calculatePrice(productModel);
+              restaurantDetailsProvider.selectedVariants.clear();
+              restaurantDetailsProvider.selectedIndexVariants.clear();
+              restaurantDetailsProvider.selectedIndexArray.clear();
+              restaurantDetailsProvider.selectedAddOns.clear();
+              restaurantDetailsProvider.quantity = 1;
+              restaurantDetailsProvider.calculatePrice(productModel);
               productDetailsBottomSheet(context, productModel);
             },
             borderRadius: BorderRadius.circular(rs.btnRadius),
@@ -727,7 +770,10 @@ class _AddToCartButton extends StatelessWidget {
     );
   }
 
-  Widget _buildOptionsButton(BuildContext context) {
+  Widget _buildOptionsButton(
+    BuildContext context,
+    RestaurantDetailsProvider restaurantDetailsProvider,
+  ) {
     return SizedBox(
       width: double.infinity,
       height: rs.btnHeight,
@@ -742,8 +788,15 @@ class _AddToCartButton extends StatelessWidget {
                 _showLoginDialog(context);
                 return;
               }
-              controller.selectedAddOns.clear();
-              _showOptionsBottomSheet(context);
+              restaurantDetailsProvider.selectedAddOns.clear();
+              showProductOptionsBottomSheet(
+                context: context,
+                controller: restaurantDetailsProvider,
+                productModel: productModel,
+                priceToPass: _priceToPass,
+                disPriceToPass: _disPriceToPass,
+                buttonFontSize: rs.btnFontSize,
+              );
             },
             borderRadius: BorderRadius.circular(rs.btnRadius),
             child: Center(
@@ -763,18 +816,18 @@ class _AddToCartButton extends StatelessWidget {
     );
   }
 
-  void _showOptionsBottomSheet(BuildContext context) {
-    showProductOptionsBottomSheet(
-      context: context,
-      controller: controller,
-      productModel: productModel,
-      priceToPass: _priceToPass,
-      disPriceToPass: _disPriceToPass,
-      buttonFontSize: rs.btnFontSize,
-    );
-  }
+  Widget _buildInCartButton(
+    BuildContext context, {
+    required int cartQty,
+    required CartProductModel? existingCartProduct,
+    required CartControllerProvider cartController,
+    required RestaurantDetailsProvider restaurantDetailsProvider,
+  }) {
+    final isPromotional =
+        _promo != null ||
+        (existingCartProduct?.promoId != null &&
+            existingCartProduct!.promoId!.isNotEmpty);
 
-  Widget _buildInCartButton(BuildContext context) {
     return SizedBox(
       width: double.infinity,
       height: rs.btnHeight,
@@ -786,18 +839,30 @@ class _AddToCartButton extends StatelessWidget {
             Material(
               color: Colors.transparent,
               child: InkWell(
-                onTap: () {
-                  final p = _promo;
-                  final finalPrice = p != null
-                      ? (p['special_price'] as num).toString()
-                      : _priceToPass;
-                  final finalDisPrice = p != null ? basePrice : _disPriceToPass;
-                  controller.addToCart(
-                    productModel: productModel,
-                    price: finalPrice,
-                    discountPrice: finalDisPrice,
+                onTap: () async {
+                  final targetProduct =
+                      existingCartProduct ??
+                      CartProductModel(
+                        id: _productId,
+                        name: productModel.name ?? '',
+                        photo: productModel.photo,
+                        price: _priceToPass,
+                        discountPrice: _disPriceToPass,
+                        quantity: cartQty,
+                        vendorID:
+                            (productModel.vendorID != null &&
+                                productModel.vendorID!.isNotEmpty)
+                            ? productModel.vendorID
+                            : (restaurantDetailsProvider.vendorModel.id ?? ''),
+                        promoId: isPromotional ? _productId : null,
+                      );
+
+                  final newQty = cartQty > 1 ? cartQty - 1 : 0;
+
+                  await cartController.addToCart(
+                    cartProductModel: targetProduct,
                     isIncrement: false,
-                    quantity: _cartQty - 1,
+                    quantity: newQty,
                   );
                 },
                 borderRadius: BorderRadius.only(
@@ -817,7 +882,7 @@ class _AddToCartButton extends StatelessWidget {
             Padding(
               padding: EdgeInsets.symmetric(horizontal: rs.qtyHPad),
               child: Text(
-                _cartQty.toString(),
+                cartQty.toString(),
                 style: TextStyle(
                   fontSize: rs.qtyFontSize,
                   fontFamily: AppThemeData.semiBold,
@@ -835,19 +900,17 @@ class _AddToCartButton extends StatelessWidget {
                     _showLoginDialog(context);
                     return;
                   }
-                  final currentQty = _cartQty;
-                  if (currentQty <= (productModel.quantity ?? 0) ||
+                  if (cartQty <= (productModel.quantity ?? 0) ||
                       (productModel.quantity ?? 0) == -1) {
-                    final p = _promo;
-                    if (p != null) {
-                      final isAllowed = controller
+                    if (isPromotional) {
+                      final isAllowed = cartController
                           .isPromotionalItemQuantityAllowed(
                             _productId,
                             productModel.vendorID ?? '',
-                            currentQty + 1,
+                            cartQty + 1,
                           );
                       if (!isAllowed) {
-                        final limit = controller.getPromotionalItemLimit(
+                        final limit = cartController.getPromotionalItemLimit(
                           _productId,
                           productModel.vendorID ?? '',
                         );
@@ -858,18 +921,29 @@ class _AddToCartButton extends StatelessWidget {
                         return;
                       }
                     }
-                    final finalPrice = p != null
-                        ? (p['special_price'] as num).toString()
-                        : _priceToPass;
-                    final finalDisPrice = p != null
-                        ? basePrice
-                        : _disPriceToPass;
-                    controller.addToCart(
-                      productModel: productModel,
-                      price: finalPrice,
-                      discountPrice: finalDisPrice,
+
+                    final targetProduct =
+                        existingCartProduct ??
+                        CartProductModel(
+                          id: _productId,
+                          name: productModel.name ?? '',
+                          photo: productModel.photo,
+                          price: _priceToPass,
+                          discountPrice: _disPriceToPass,
+                          quantity: cartQty,
+                          vendorID:
+                              (productModel.vendorID != null &&
+                                  productModel.vendorID!.isNotEmpty)
+                              ? productModel.vendorID
+                              : (restaurantDetailsProvider.vendorModel.id ??
+                                    ''),
+                          promoId: isPromotional ? _productId : null,
+                        );
+
+                    await cartController.addToCart(
+                      cartProductModel: targetProduct,
                       isIncrement: true,
-                      quantity: currentQty + 1,
+                      quantity: cartQty + 1,
                     );
                   } else {
                     ShowToastDialog.showToast('Out of stock'.tr);
@@ -895,7 +969,11 @@ class _AddToCartButton extends StatelessWidget {
     );
   }
 
-  Widget _buildAddButton(BuildContext context) {
+  Widget _buildAddButton(
+    BuildContext context, {
+    required CartControllerProvider cartController,
+    required RestaurantDetailsProvider restaurantDetailsProvider,
+  }) {
     final hasOptions =
         productModel.options != null && productModel.options!.isNotEmpty;
     final hasItemAttributes =
@@ -918,28 +996,69 @@ class _AddToCartButton extends StatelessWidget {
                 return;
               }
               if (hasItemAttributes) {
-                controller.selectedVariants.clear();
-                controller.selectedIndexVariants.clear();
-                controller.selectedIndexArray.clear();
-                controller.selectedAddOns.clear();
-                controller.quantity = 1;
-                controller.calculatePrice(productModel);
+                restaurantDetailsProvider.selectedVariants.clear();
+                restaurantDetailsProvider.selectedIndexVariants.clear();
+                restaurantDetailsProvider.selectedIndexArray.clear();
+                restaurantDetailsProvider.selectedAddOns.clear();
+                restaurantDetailsProvider.quantity = 1;
+                restaurantDetailsProvider.calculatePrice(productModel);
                 productDetailsBottomSheet(context, productModel);
               } else if (hasOptions) {
-                controller.selectedAddOns.clear();
+                restaurantDetailsProvider.selectedAddOns.clear();
                 showProductOptionsBottomSheet(
                   context: context,
-                  controller: controller,
+                  controller: restaurantDetailsProvider,
                   productModel: productModel,
                   priceToPass: _priceToPass,
                   disPriceToPass: _disPriceToPass,
                   buttonFontSize: rs.btnFontSize,
                 );
               } else {
-                controller.addProductAndRemoveProductFunction(
-                  productModel: productModel,
+                if ((productModel.quantity ?? 0) != -1 &&
+                    (productModel.quantity ?? 0) < 1) {
+                  ShowToastDialog.showToast("Out of stock".tr);
+                  return;
+                }
+
+                if (_promo != null) {
+                  final isAllowed = cartController
+                      .isPromotionalItemQuantityAllowed(
+                        _productId,
+                        productModel.vendorID ?? '',
+                        1,
+                      );
+                  if (!isAllowed) {
+                    final limit = cartController.getPromotionalItemLimit(
+                      _productId,
+                      productModel.vendorID ?? '',
+                    );
+                    ShowToastDialog.showToast(
+                      "Maximum $limit items allowed for this promotional offer"
+                          .tr,
+                    );
+                    return;
+                  }
+                }
+
+                final cartProductModel = CartProductModel(
+                  id: _productId,
+                  name: productModel.name ?? '',
+                  photo: productModel.photo,
                   price: _priceToPass,
-                  disPrice: _disPriceToPass,
+                  discountPrice: _disPriceToPass,
+                  quantity: 1,
+                  vendorID:
+                      (productModel.vendorID != null &&
+                          productModel.vendorID!.isNotEmpty)
+                      ? productModel.vendorID
+                      : (restaurantDetailsProvider.vendorModel.id ?? ''),
+                  promoId: _promo != null ? _productId : null,
+                );
+
+                await cartController.addToCart(
+                  cartProductModel: cartProductModel,
+                  isIncrement: true,
+                  quantity: 1,
                 );
               }
             },
@@ -949,8 +1068,8 @@ class _AddToCartButton extends StatelessWidget {
                 hasOptions
                     ? 'Options'.tr
                     : hasItemAttributes
-                        ? 'Add'.tr
-                        : 'Add'.tr,
+                    ? 'Add'.tr
+                    : 'Add'.tr,
                 style: TextStyle(
                   fontSize: rs.btnFontSize,
                   fontFamily: AppThemeData.semiBold,

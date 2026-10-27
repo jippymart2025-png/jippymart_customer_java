@@ -761,6 +761,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     _isRestaurantFavorite = false;
     _expandAllCategoriesByDefault = true;
     _expandedCategoryIndices.clear();
+    _serverCartQuantities.clear();
   }
 
   Future<void> _loadFromCache(RestaurantCacheData cachedData) async {
@@ -1762,8 +1763,12 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       return localQty;
     }
 
-    // Fallback to server cart
-    return _serverCartQuantities[baseId] ?? 0;
+    // Only fallback to server cart if local cart is completely empty (initial load)
+    if (HomeProvider.cartItem.isEmpty) {
+      return _serverCartQuantities[baseId] ?? 0;
+    }
+
+    return 0;
   }
 
   bool isProductInCart(String productId) =>
@@ -2368,18 +2373,13 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     //
     // Add the fields supported by your CartProductModel here.
     // ------------------------------------------------------------
-
-    final CartProductModel cartProductModel = CartProductModel();
-
-    // If these fields exist in your CartProductModel,
-    // uncomment/use them:
-    //
-    // cartProductModel.product = productModel;
-    // cartProductModel.price = price;
-    // cartProductModel.discountPrice = discountPrice;
-    // cartProductModel.quantity = quantity;
-    // cartProductModel.productId = numericProductId;
-    // cartProductModel.vendorId = outletId;
+    final CartProductModel cartProductModel = CartProductModel()
+      ..id = numericProductId?.toString() ?? productId
+      ..name = productModel.name ?? ""
+      ..price = price
+      ..discountPrice = discountPrice
+      ..quantity = quantity
+      ..vendorID = outletId != null && outletId > 0 ? outletId.toString() : "0";
 
     // ------------------------------------------------------------
     // LOCAL CART
