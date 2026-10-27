@@ -141,8 +141,11 @@ class SafeHttpClient {
         final refreshedHeaders = await _refreshToken();
         if (refreshedHeaders != null) {
           final retryResponse = await http
-              .post(url, headers: _mergeHeaders(headers, refreshedHeaders),
-                  body: body)
+              .post(
+                url,
+                headers: _mergeHeaders(headers, refreshedHeaders),
+                body: body,
+              )
               .timeout(
                 timeout ?? const Duration(seconds: 30),
                 onTimeout: () {
@@ -228,8 +231,11 @@ class SafeHttpClient {
         final refreshedHeaders = await _refreshToken();
         if (refreshedHeaders != null) {
           final retryResponse = await http
-              .put(url, headers: _mergeHeaders(headers, refreshedHeaders),
-                  body: body)
+              .put(
+                url,
+                headers: _mergeHeaders(headers, refreshedHeaders),
+                body: body,
+              )
               .timeout(
                 timeout ?? const Duration(seconds: 30),
                 onTimeout: () {
@@ -315,8 +321,11 @@ class SafeHttpClient {
         final refreshedHeaders = await _refreshToken();
         if (refreshedHeaders != null) {
           final retryResponse = await http
-              .delete(url, headers: _mergeHeaders(headers, refreshedHeaders),
-                  body: body)
+              .delete(
+                url,
+                headers: _mergeHeaders(headers, refreshedHeaders),
+                body: body,
+              )
               .timeout(
                 timeout ?? const Duration(seconds: 30),
                 onTimeout: () {
@@ -374,7 +383,9 @@ class SafeHttpClient {
 
   /// Merge two header maps, with merge taking precedence over base
   static Map<String, String> _mergeHeaders(
-      Map<String, String>? base, Map<String, String>? merge) {
+    Map<String, String>? base,
+    Map<String, String>? merge,
+  ) {
     final result = <String, String>{};
     if (base != null) {
       result.addAll(base);
@@ -414,10 +425,7 @@ class SafeHttpClient {
       final newRefreshToken = data['refreshToken']?.toString() ?? '';
 
       if (newJwt.isNotEmpty) {
-        await saveAuthToken(
-          accessToken: newJwt,
-          refreshToken: newRefreshToken,
-        );
+        await saveAuthToken(accessToken: newJwt, refreshToken: newRefreshToken);
       }
 
       return {
@@ -425,6 +433,12 @@ class SafeHttpClient {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       };
+    }
+
+    // If refresh token is invalid (401) or server error (500),
+    // clear stored tokens and force re-authentication
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      await clearAuthToken();
     }
 
     return null;
