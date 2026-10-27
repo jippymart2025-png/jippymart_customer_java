@@ -2212,12 +2212,29 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     if (productModel.addOnsTitle != null &&
         productModel.addOnsTitle!.isNotEmpty &&
         productModel.addOnsPrice != null) {
-      for (int i = 0;
-          i < productModel.addOnsTitle!.length;
-          i++) {
+      for (int i = 0; i < productModel.addOnsTitle!.length; i++) {
         if (selectedAddOns.contains(productModel.addOnsTitle![i]) &&
             i < productModel.addOnsPrice!.length) {
-          final int variantOptionId = i + 100000;
+          // Use the add-on's option ID from the preserved list
+          final String? variantOptionId = productModel.addOnsOptionId?.elementAtOrNull(i);
+
+          if (variantOptionId == null || variantOptionId.isEmpty) {
+            debugPrint(
+              '[addToCart] Add-on has no variant option ID at index $i: '
+              '${productModel.addOnsTitle![i]}',
+            );
+            continue;
+          }
+
+          final int? variantOptionIdInt = int.tryParse(variantOptionId);
+
+          if (variantOptionIdInt == null) {
+            debugPrint(
+              '[addToCart] Invalid variant option ID for add-on: $variantOptionId',
+            );
+            continue;
+          }
+
           final double unitPrice =
               double.tryParse(
                 Constant.productCommissionPrice(
@@ -2228,7 +2245,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
               0;
 
           apiVariants.add({
-            'variantOptionId': variantOptionId,
+            'variantOptionId': variantOptionIdInt,
             'quantity': 1,
             'unitPrice': unitPrice,
           });

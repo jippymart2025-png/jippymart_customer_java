@@ -6,6 +6,7 @@ class ProductModel {
   bool? veg;
   bool? publish;
   List<dynamic>? addOnsTitle;
+  List<String>? addOnsOptionId;
   int? calories;
   int? proteins;
   List<dynamic>? addOnsPrice;
@@ -254,6 +255,8 @@ class ProductModel {
 
       // Parse addOnsPrice - handle both string and list formats
       addOnsPrice = _parseJsonStringToList(json['addOnsPrice']) ?? [];
+      // Parse addOnsOptionId - handle both string and list formats
+      addOnsOptionId = _parseJsonStringToList(json['addOnsOptionId']) ?? [];
 
       reviewsSum = _parseNum(json['reviewsSum']) ?? 0.0;
       // Convert int (0/1) to bool for boolean fields - handle string "1"/"0" as well
@@ -384,16 +387,29 @@ class ProductModel {
               : List<dynamic>.from(
                   _parseJsonStringToList(json['addOnsPrice']) ?? [],
                 );
+          final mergedOptionIds =
+              json['addOnsOptionId'] == null ||
+                  json['addOnsOptionId'].toString().isEmpty
+              ? <String>[]
+              : List<String>.from(
+                  _parseJsonStringToList(json['addOnsOptionId']) ?? [],
+                );
           for (final addOn in addOnOptions) {
             if (addOn.variantName == null || addOn.variantName!.isEmpty)
               continue;
             if (!mergedTitles.contains(addOn.variantName)) {
               mergedTitles.add(addOn.variantName);
               mergedPrices.add(addOn.price ?? '0');
+              // Add the option ID if not already present
+              final idString = addOn.id?.toString() ?? '';
+              if (idString.isNotEmpty && !mergedOptionIds.contains(idString)) {
+                mergedOptionIds.add(idString);
+              }
             }
           }
           addOnsTitle = mergedTitles;
           addOnsPrice = mergedPrices;
+          addOnsOptionId = mergedOptionIds;
         }
       }
 
@@ -592,6 +608,9 @@ class ProductModel {
 
     // Convert lists back to JSON strings if needed by API
     data['addOnsPrice'] = addOnsPrice != null ? json.encode(addOnsPrice) : "[]";
+
+    // Convert lists back to JSON strings if needed by API
+    data['addOnsOptionId'] = addOnsOptionId != null ? json.encode(addOnsOptionId) : "[]";
 
     data['reviewsSum'] = reviewsSum;
     data['takeawayOption'] = takeawayOption;
