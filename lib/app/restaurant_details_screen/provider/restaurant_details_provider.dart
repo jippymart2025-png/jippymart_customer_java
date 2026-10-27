@@ -2206,7 +2206,37 @@ class RestaurantDetailsProvider extends ChangeNotifier {
           'unitPrice': unitPrice,
         });
       }
-    } else if (productHasVariants) {
+    }
+
+    // Add add-ons to apiVariants
+    if (productModel.addOnsTitle != null &&
+        productModel.addOnsTitle!.isNotEmpty &&
+        productModel.addOnsPrice != null) {
+      for (int i = 0;
+          i < productModel.addOnsTitle!.length;
+          i++) {
+        if (selectedAddOns.contains(productModel.addOnsTitle![i]) &&
+            i < productModel.addOnsPrice!.length) {
+          final int variantOptionId = i + 100000;
+          final double unitPrice =
+              double.tryParse(
+                Constant.productCommissionPrice(
+                  vendorModel,
+                  productModel.addOnsPrice![i].toString(),
+                ),
+              ) ??
+              0;
+
+          apiVariants.add({
+            'variantOptionId': variantOptionId,
+            'quantity': 1,
+            'unitPrice': unitPrice,
+          });
+        }
+      }
+    }
+
+    if (productHasVariants && variantInfo == null) {
       debugPrint(
         '[addToCart] Product has variants but no variantInfo was passed',
       );
