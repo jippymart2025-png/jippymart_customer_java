@@ -494,6 +494,14 @@ void showProductOptionsBottomSheet({
                             padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
                           onPressed: () async {
+                            if (hasOptions && selectedOptionIndices.isEmpty) {
+                              ShowToastDialog.showToast(
+                                'Please select at least one option before adding add-ons'
+                                    .tr,
+                              );
+                              return;
+                            }
+
                             bool added = false;
 
                             if (hasOptions) {
@@ -528,13 +536,6 @@ void showProductOptionsBottomSheet({
                                       double.tryParse(priceToPass) ?? 0;
                                 }
 
-                                // if (selectedPrice <= 0) {
-                                //   ShowToastDialog.showToast(
-                                //     'Invalid product price'.tr,
-                                //   );
-                                //   continue;
-                                // }
-
                                 final String selectedPriceString = selectedPrice
                                     .toString();
 
@@ -568,7 +569,8 @@ void showProductOptionsBottomSheet({
                                 for (final index in selectedOptionIndices) {
                                   final selected = options[index];
                                   final sku = selected.variantSku ?? '';
-                                  if (sku.isNotEmpty && !controller.selectedVariants.contains(sku)) {
+                                  if (sku.isNotEmpty &&
+                                      !controller.selectedVariants.contains(sku)) {
                                     controller.selectedVariants.add(sku);
                                   }
                                 }
@@ -585,9 +587,8 @@ void showProductOptionsBottomSheet({
                               }
                             }
 
-                            // No variant selected (add-ons only / no options).
-                            // variantOptionId is sent as null by addToCart.
-                            if (!added) {
+                            // No options on product (only addons or simple product).
+                            if (!added && !hasOptions) {
                               controller.addToCart(
                                 productModel: productModel,
                                 price: priceToPass,

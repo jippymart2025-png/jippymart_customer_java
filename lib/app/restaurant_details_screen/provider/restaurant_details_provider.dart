@@ -1642,20 +1642,74 @@ class RestaurantDetailsProvider extends ChangeNotifier {
             ? item.totalPrice / item.quantity
             : 0.0;
 
+        ProductModel? matchedProduct;
+        try {
+          matchedProduct = productList.firstWhere(
+            (p) =>
+                p.id != null &&
+                p.id.toString() == item.productId.toString(),
+          );
+        } catch (_) {
+          matchedProduct = null;
+        }
+
+        String? addonName;
+        String? optionName;
+
+        if (item.variantOptionId != null && matchedProduct != null) {
+          final vId = item.variantOptionId.toString();
+          // Check add-ons
+          if (matchedProduct.addOnsOptionId != null) {
+            final idx = matchedProduct.addOnsOptionId!.indexOf(vId);
+            if (idx >= 0 && idx < (matchedProduct.addOnsTitle?.length ?? 0)) {
+              addonName = matchedProduct.addOnsTitle![idx];
+            }
+          }
+          // Check options
+          if (addonName == null && matchedProduct.options != null) {
+            for (final opt in matchedProduct.options!) {
+              if (opt.variantId?.toString() == vId) {
+                optionName = opt.variantName ?? opt.title;
+                break;
+              }
+            }
+          }
+          // Check itemAttribute variants
+          if (addonName == null &&
+              optionName == null &&
+              matchedProduct.itemAttribute?.variants != null) {
+            for (final v in matchedProduct.itemAttribute!.variants!) {
+              if (v.variantId?.toString() == vId) {
+                optionName = v.variantSku;
+                break;
+              }
+            }
+          }
+        }
+
+        final displayName = addonName ?? optionName;
+
         final cartProduct = CartProductModel(
           id: item.variantOptionId != null
               ? '${item.productId}~${item.variantOptionId}'
               : item.productId.toString(),
-          name: item.productName,
-          photo: item.productImage,
+          name: addonName != null
+              ? '${item.productName} ($addonName)'
+              : item.productName,
+          photo: item.productImage ?? matchedProduct?.photo,
           price: unitPrice.toStringAsFixed(2),
           discountPrice: '0.0',
           quantity: item.quantity,
           vendorID: cart.outletId?.toString(),
+          extras: addonName != null ? [addonName] : null,
           variantInfo: item.variantOptionId != null
               ? VariantInfo(
                   variantId: item.variantOptionId.toString(),
                   variantPrice: unitPrice.toStringAsFixed(2),
+                  variantSku: displayName,
+                  variantOptions: displayName != null
+                      ? {'option': displayName}
+                      : null,
                 )
               : null,
         );
@@ -2094,7 +2148,10 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     // RESOLVE IDS
     // ------------------------------------------------------------
     final productId = productModel.id?.toString() ?? '';
-    final vendorId = vendorModel.id?.toString() ?? '';
+    final vendorId = (productModel.vendorID != null &&
+            productModel.vendorID!.isNotEmpty)
+        ? productModel.vendorID!
+        : (vendorModel.id?.toString() ?? '');
 
     final baseId = productId.split('~').first;
 
@@ -2102,7 +2159,8 @@ class RestaurantDetailsProvider extends ChangeNotifier {
 
     final numericProductId = _resolveNumericProductId(productModel);
 
-    final outletId = int.tryParse(vendorId);
+    final outletId = int.tryParse(vendorId) ??
+        int.tryParse(vendorModel.id?.toString() ?? '');
 
     // ------------------------------------------------------------
     // OPTIMISTIC SERVER CART QUANTITY UPDATE
@@ -2207,32 +2265,40 @@ class RestaurantDetailsProvider extends ChangeNotifier {
 
         apiVariants.add({
           'variantOptionId': variantOptionId,
-          'quantity': quantity,
+          'quantity': quantity >= 1 ? quantity : 1,
           'unitPrice': unitPrice,
         });
       }
+    } else if (!productHasVariants) {
+      // For simple products without variants, always include the base product first
+      final double unitPrice = double.tryParse(price) ?? 0;
+      apiVariants.add({
+        'quantity': quantity >= 1 ? quantity : 1,
+        'unitPrice': unitPrice,
+      });
     }
 
     // If product has variants, require at least one variant selected
     // before allowing addons to be added
-    if (productHasVariants && productModel.addOnsTitle != null &&
-        productModel.addOnsTitle!.isNotEmpty && productModel.addOnsPrice != null) {
-      if (selectedVariants.isEmpty) {
+    if (productHasVariants &&
+        productModel.addOnsTitle != null &&
+        productModel.addOnsTitle!.isNotEmpty &&
+        productModel.addOnsPrice != null) {
+      if (selectedVariants.isEmpty &&
+          (variantInfo == null || variantInfo.isEmpty)) {
         debugPrint(
           '[addToCart] Cannot add addons: No variant selected for product with variants',
         );
-        // Show toast and return - cannot proceed with addons
         ShowToastDialog.showToast(
           'Please select at least one variant before adding addons'.tr,
         );
-        // Reset addon selection since it's not valid
         selectedAddOns.clear();
         notifyListeners();
         return;
       }
     }
 
-    // Add add-ons to apiVariants
+    // Add add-ons to apiVariants (only alongside a product or variant)
     if (productModel.addOnsTitle != null &&
         productModel.addOnsTitle!.isNotEmpty &&
         productModel.addOnsPrice != null) {
@@ -2240,7 +2306,8 @@ class RestaurantDetailsProvider extends ChangeNotifier {
         if (selectedAddOns.contains(productModel.addOnsTitle![i]) &&
             i < productModel.addOnsPrice!.length) {
           // Use the add-on's option ID from the preserved list
-          final String? variantOptionId = productModel.addOnsOptionId?.elementAtOrNull(i);
+          final String? variantOptionId =
+              productModel.addOnsOptionId?.elementAtOrNull(i);
 
           if (variantOptionId == null || variantOptionId.isEmpty) {
             debugPrint(
@@ -2277,10 +2344,12 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       }
     }
 
-    if (productHasVariants && variantInfo == null) {
-      debugPrint(
-        '[addToCart] Product has variants but no variantInfo was passed',
-      );
+    if (apiVariants.isEmpty) {
+      final double unitPrice = double.tryParse(price) ?? 0;
+      apiVariants.add({
+        'quantity': quantity >= 1 ? quantity : 1,
+        'unitPrice': unitPrice,
+      });
     }
 
     // ------------------------------------------------------------
@@ -2300,15 +2369,6 @@ class RestaurantDetailsProvider extends ChangeNotifier {
 
     // ------------------------------------------------------------
     // UPDATE SERVER CART
-    //
-    // IMPORTANT:
-    // API IS CALLED EVEN WHEN apiVariants IS EMPTY.
-    //
-    // Product without variants:
-    // variants = []
-    //
-    // Product with variants:
-    // variants = [...]
     // ------------------------------------------------------------
     if (customerId != null && numericProductId != null && outletId != null) {
       debugPrint('[addToCart] Calling CartApiService.updateCart...');
@@ -2359,27 +2419,61 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     // ------------------------------------------------------------
     // BUILD LOCAL CART MODEL
     // ------------------------------------------------------------
-    //
-    // NOTE:
-    // Your previous code was doing:
-    //
-    // final CartProductModel cartProductModel = CartProductModel();
-    //
-    // without setting any values. That is why your logs showed:
-    //
-    // Product: null
-    // Price: null
-    // DiscountPrice: null
-    //
-    // Add the fields supported by your CartProductModel here.
-    // ------------------------------------------------------------
-    final CartProductModel cartProductModel = CartProductModel()
-      ..id = numericProductId?.toString() ?? productId
-      ..name = productModel.name ?? ""
-      ..price = price
-      ..discountPrice = discountPrice
-      ..quantity = quantity
-      ..vendorID = outletId != null && outletId > 0 ? outletId.toString() : "0";
+    CartProductModel? existingCartProduct;
+    try {
+      existingCartProduct = HomeProvider.cartItem.firstWhere(
+        (item) =>
+            item.id != null &&
+            (item.id == productId ||
+                item.id!.startsWith('$productId~') ||
+                (numericProductId != null &&
+                    (item.id == numericProductId.toString() ||
+                        item.id!.startsWith('$numericProductId~')))),
+      );
+    } catch (_) {
+      existingCartProduct = null;
+    }
+
+    final String resolvedVendorId = (productModel.vendorID != null &&
+            productModel.vendorID!.isNotEmpty)
+        ? productModel.vendorID!
+        : (vendorModel.id != null && vendorModel.id!.isNotEmpty
+            ? vendorModel.id!
+            : (outletId != null && outletId > 0 ? outletId.toString() : ''));
+
+    final List<dynamic> currentAddons = List<dynamic>.from(selectedAddOns);
+
+    final CartProductModel cartProductModel = existingCartProduct ??
+        (CartProductModel()
+          ..id = productId.isNotEmpty
+              ? productId
+              : (numericProductId?.toString() ?? '')
+          ..name = productModel.name ?? ""
+          ..photo = productModel.photo
+          ..price = price
+          ..discountPrice = discountPrice
+          ..quantity = quantity
+          ..vendorID = resolvedVendorId);
+
+    if (existingCartProduct != null) {
+      cartProductModel.quantity = quantity;
+      cartProductModel.price = price;
+      cartProductModel.discountPrice = discountPrice;
+      if (cartProductModel.vendorID == null ||
+          cartProductModel.vendorID!.isEmpty ||
+          cartProductModel.vendorID == '0') {
+        cartProductModel.vendorID = resolvedVendorId;
+      }
+    }
+
+    if (currentAddons.isNotEmpty) {
+      cartProductModel.extras = currentAddons;
+      cartProductModel.extrasPrice = adOnsPrice;
+    }
+
+    if (variantInfo != null && variantInfo.isNotEmpty) {
+      cartProductModel.variantInfo = variantInfo.first;
+    }
 
     // ------------------------------------------------------------
     // LOCAL CART
@@ -2388,6 +2482,12 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       debugPrint('[addToCart] Adding item to local cart');
 
       await cartProvider.addToCart(Get.context!, cartProductModel, quantity);
+
+      // Reset selection state after adding
+      selectedAddOns.clear();
+      selectedVariants.clear();
+      selectedIndexVariants.clear();
+      selectedIndexArray.clear();
     } else {
       debugPrint('[addToCart] Removing item from local cart');
 

@@ -646,7 +646,10 @@ class _AddToCartButton extends StatelessWidget {
 
   Map<String, dynamic>? get _promo => controller.getActivePromotionForProduct(
     productId: _productId,
-    restaurantId: productModel.vendorID ?? '',
+    restaurantId:
+        (productModel.vendorID != null && productModel.vendorID!.isNotEmpty)
+            ? productModel.vendorID!
+            : (controller.vendorModel.id ?? ''),
   );
 
   String get _priceToPass {

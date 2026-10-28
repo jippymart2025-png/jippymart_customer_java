@@ -124,10 +124,30 @@ Widget _buildProductItem(
           : (cartProductModel.photo?.isNotEmpty == true
                 ? cartProductModel.photo
                 : null);
-      final productName = productModel?.name?.isNotEmpty == true
-          ? productModel!.name
-          : (cartProductModel.name?.isNotEmpty == true
-                ? cartProductModel.name
+
+      String? resolvedAddonName;
+      final variantId = cartProductModel.variantInfo?.variantId ??
+          (cartProductModel.id?.contains('~') == true
+              ? cartProductModel.id!.split('~').last
+              : null);
+
+      if (variantId != null &&
+          productModel != null &&
+          productModel.addOnsOptionId != null) {
+        final idx = productModel.addOnsOptionId!.indexOf(variantId);
+        if (idx >= 0 && idx < (productModel.addOnsTitle?.length ?? 0)) {
+          resolvedAddonName = productModel.addOnsTitle![idx];
+        }
+      }
+
+      final bool isAddonItem = resolvedAddonName != null ||
+          (cartProductModel.name?.toLowerCase().contains('add-on') ?? false) ||
+          (cartProductModel.name?.toLowerCase().contains('addon') ?? false);
+
+      final productName = cartProductModel.name?.isNotEmpty == true
+          ? cartProductModel.name!
+          : (productModel?.name?.isNotEmpty == true
+                ? productModel!.name!
                 : 'Product');
 
       // Check if this is a promotional item
@@ -297,6 +317,29 @@ Widget _buildProductItem(
                               ),
                             ),
                           ),
+
+                        // Add-on Tag
+                        if (isAddonItem)
+                          Container(
+                            margin: const EdgeInsets.only(left: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppThemeData.primary300.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'ADD-ON',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: AppThemeData.primary300,
+                                fontFamily: AppThemeData.semiBold,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
                       ],
                     ),
 
@@ -349,17 +392,26 @@ Widget _buildProductItem(
                           ],
                         ),
                       )
-                    else if (cartProductModel.variantInfo?.variantOptions !=
+                    else if ((cartProductModel.variantInfo?.variantOptions !=
                             null &&
-                        cartProductModel.variantInfo?.variantOptions is Map)
+                        cartProductModel.variantInfo?.variantOptions is Map &&
+                        (cartProductModel.variantInfo?.variantOptions?['option']
+                                ?.toString()
+                                .isNotEmpty ??
+                            false)) ||
+                        (cartProductModel.variantInfo?.variantSku != null &&
+                            cartProductModel
+                                .variantInfo!.variantSku!.isNotEmpty) ||
+                        resolvedAddonName != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
                         child: Text(
-                          cartProductModel
-                                  .variantInfo
-                                  ?.variantOptions?['option'] ??
-                              cartProductModel.variantInfo?.variantSku ??
-                              '',
+                          resolvedAddonName != null
+                              ? 'Add-on: $resolvedAddonName'
+                              : (cartProductModel.variantInfo
+                                      ?.variantOptions?['option'] ??
+                                  cartProductModel.variantInfo?.variantSku ??
+                                  ''),
                           style: TextStyle(
                             fontSize: 12,
                             fontFamily: AppThemeData.semiBold,
