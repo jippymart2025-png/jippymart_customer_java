@@ -2850,27 +2850,75 @@ class CartControllerProvider extends ChangeNotifier {
           final cart = await CartApiService.getCart(customerId);
           if (cart != null && cart.items.isNotEmpty) {
             final List<CartProductModel> serverCartItems = [];
+            final currentLocalItems =
+                List<CartProductModel>.from(HomeProvider.cartItem);
+
             for (final item in cart.items) {
               final unitPrice = item.quantity > 0
                   ? item.totalPrice / item.quantity
                   : 0.0;
+
+              final itemId = item.variantOptionId != null
+                  ? '${item.productId}~${item.variantOptionId}'
+                  : item.productId.toString();
+
+              CartProductModel? existingLocal;
+              try {
+                existingLocal = currentLocalItems.firstWhere(
+                  (e) =>
+                      e.id == itemId ||
+                      (item.variantOptionId != null &&
+                          (e.id == '${item.productId}~${item.variantOptionId}' ||
+                              e.variantInfo?.variantId ==
+                                  item.variantOptionId.toString())),
+                );
+              } catch (_) {
+                existingLocal = null;
+              }
+
+              // Resolve photo: prefer non-empty server photo, then local photo
+              String? resolvedPhoto;
+              if (item.productImage != null &&
+                  item.productImage!.trim().isNotEmpty) {
+                resolvedPhoto = item.productImage;
+              } else if (existingLocal?.photo != null &&
+                  existingLocal!.photo!.trim().isNotEmpty) {
+                resolvedPhoto = existingLocal.photo;
+              }
+
+              // Resolve variantInfo
+              VariantInfo? resolvedVariantInfo;
+              if (item.variantOptionId != null) {
+                final vIdStr = item.variantOptionId.toString();
+                resolvedVariantInfo = VariantInfo(
+                  variantId: vIdStr,
+                  variantPrice: unitPrice.toStringAsFixed(2),
+                  variantSku: existingLocal?.variantInfo?.variantSku,
+                  variantImage: existingLocal?.variantInfo?.variantImage,
+                  variantOptions: existingLocal?.variantInfo?.variantOptions,
+                );
+              } else {
+                resolvedVariantInfo = existingLocal?.variantInfo;
+              }
+
               serverCartItems.add(
                 CartProductModel(
-                  id: item.variantOptionId != null
-                      ? '${item.productId}~${item.variantOptionId}'
-                      : item.productId.toString(),
-                  name: item.productName,
-                  photo: item.productImage,
+                  id: itemId,
+                  name: (existingLocal?.name?.isNotEmpty == true)
+                      ? existingLocal!.name
+                      : item.productName,
+                  photo: resolvedPhoto,
                   price: unitPrice.toStringAsFixed(2),
-                  discountPrice: '0.0',
+                  discountPrice: existingLocal?.discountPrice ?? '0.0',
+                  merchantPrice: existingLocal?.merchantPrice,
+                  vendorID: cart.outletId?.toString() ?? existingLocal?.vendorID,
+                  vendorName: existingLocal?.vendorName,
                   quantity: item.quantity,
-                  vendorID: cart.outletId?.toString(),
-                  variantInfo: item.variantOptionId != null
-                      ? VariantInfo(
-                          variantId: item.variantOptionId.toString(),
-                          variantPrice: unitPrice.toStringAsFixed(2),
-                        )
-                      : null,
+                  extrasPrice: existingLocal?.extrasPrice,
+                  extras: existingLocal?.extras,
+                  variantInfo: resolvedVariantInfo,
+                  promoId: existingLocal?.promoId,
+                  selectedOption: existingLocal?.selectedOption,
                 ),
               );
             }

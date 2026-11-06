@@ -119,8 +119,20 @@ Widget _buildProductItem(
     builder: (context, restaurantDetailsProvider, cartController, _) {
       // Use priceSyncVersion to force rebuild when prices update
       final _ = cartController.priceSyncVersion;
-      final productPhoto = productModel?.photo?.isNotEmpty == true
-          ? productModel!.photo
+      ProductModel? effectiveProduct = productModel;
+      if (effectiveProduct == null && cartProductModel.id != null) {
+        final rawProductId = cartProductModel.id!.split('~').first;
+        try {
+          effectiveProduct = restaurantDetailsProvider.productList.firstWhere(
+            (p) => p.id != null && p.id.toString() == rawProductId,
+          );
+        } catch (_) {
+          effectiveProduct = null;
+        }
+      }
+
+      final productPhoto = effectiveProduct?.photo?.isNotEmpty == true
+          ? effectiveProduct!.photo
           : (cartProductModel.photo?.isNotEmpty == true
                 ? cartProductModel.photo
                 : null);
@@ -131,12 +143,30 @@ Widget _buildProductItem(
               ? cartProductModel.id!.split('~').last
               : null);
 
-      if (variantId != null &&
-          productModel != null &&
-          productModel.addOnsOptionId != null) {
-        final idx = productModel.addOnsOptionId!.indexOf(variantId);
-        if (idx >= 0 && idx < (productModel.addOnsTitle?.length ?? 0)) {
-          resolvedAddonName = productModel.addOnsTitle![idx];
+      if (variantId != null && effectiveProduct != null) {
+        if (effectiveProduct.addOnsOptionId != null) {
+          final idx = effectiveProduct.addOnsOptionId!.indexOf(variantId);
+          if (idx >= 0 && idx < (effectiveProduct.addOnsTitle?.length ?? 0)) {
+            resolvedAddonName = effectiveProduct.addOnsTitle![idx]?.toString();
+          }
+        }
+        if (resolvedAddonName == null && effectiveProduct.options != null) {
+          for (final opt in effectiveProduct.options!) {
+            if (opt.variantId?.toString() == variantId ||
+                opt.id?.toString() == variantId) {
+              resolvedAddonName = opt.variantName ?? opt.title;
+              break;
+            }
+          }
+        }
+        if (resolvedAddonName == null &&
+            effectiveProduct.itemAttribute?.variants != null) {
+          for (final v in effectiveProduct.itemAttribute!.variants!) {
+            if (v.variantId?.toString() == variantId) {
+              resolvedAddonName = v.variantSku;
+              break;
+            }
+          }
         }
       }
 

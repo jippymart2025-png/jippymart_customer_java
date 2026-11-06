@@ -1637,10 +1637,31 @@ class RestaurantDetailsProvider extends ChangeNotifier {
 
       // Convert server cart items to CartProductModel and load into local cart
       final List<CartProductModel> serverCartItems = [];
+      final currentLocalItems =
+          List<CartProductModel>.from(HomeProvider.cartItem);
+
       for (final item in cart.items) {
         final unitPrice = item.quantity > 0
             ? item.totalPrice / item.quantity
             : 0.0;
+
+        final itemId = item.variantOptionId != null
+            ? '${item.productId}~${item.variantOptionId}'
+            : item.productId.toString();
+
+        CartProductModel? existingLocal;
+        try {
+          existingLocal = currentLocalItems.firstWhere(
+            (e) =>
+                e.id == itemId ||
+                (item.variantOptionId != null &&
+                    (e.id == '${item.productId}~${item.variantOptionId}' ||
+                        e.variantInfo?.variantId ==
+                            item.variantOptionId.toString())),
+          );
+        } catch (_) {
+          existingLocal = null;
+        }
 
         ProductModel? matchedProduct;
         try {
@@ -1662,13 +1683,14 @@ class RestaurantDetailsProvider extends ChangeNotifier {
           if (matchedProduct.addOnsOptionId != null) {
             final idx = matchedProduct.addOnsOptionId!.indexOf(vId);
             if (idx >= 0 && idx < (matchedProduct.addOnsTitle?.length ?? 0)) {
-              addonName = matchedProduct.addOnsTitle![idx];
+              addonName = matchedProduct.addOnsTitle![idx]?.toString();
             }
           }
           // Check options
           if (addonName == null && matchedProduct.options != null) {
             for (final opt in matchedProduct.options!) {
-              if (opt.variantId?.toString() == vId) {
+              if (opt.variantId?.toString() == vId ||
+                  opt.id?.toString() == vId) {
                 optionName = opt.variantName ?? opt.title;
                 break;
               }
@@ -1687,31 +1709,92 @@ class RestaurantDetailsProvider extends ChangeNotifier {
           }
         }
 
-        final displayName = addonName ?? optionName;
+        final resolvedAddonOrOptionName = addonName ?? optionName;
+
+        // Resolve photo
+        String? resolvedPhoto;
+        if (item.productImage != null &&
+            item.productImage!.trim().isNotEmpty) {
+          resolvedPhoto = item.productImage;
+        } else if (existingLocal?.photo != null &&
+            existingLocal!.photo!.trim().isNotEmpty) {
+          resolvedPhoto = existingLocal.photo;
+        } else if (matchedProduct?.photo != null &&
+            matchedProduct!.photo!.trim().isNotEmpty) {
+          resolvedPhoto = matchedProduct.photo;
+        }
+
+        // Resolve extras
+        List<dynamic>? resolvedExtras = existingLocal?.extras;
+        if ((resolvedExtras == null || resolvedExtras.isEmpty) &&
+            addonName != null) {
+          resolvedExtras = [addonName];
+        }
+
+        // Resolve selectedOption
+        Map<String, dynamic>? resolvedSelectedOption =
+            existingLocal?.selectedOption;
+        if (resolvedSelectedOption == null &&
+            resolvedAddonOrOptionName != null) {
+          resolvedSelectedOption = {
+            'title': resolvedAddonOrOptionName,
+            'option_title': resolvedAddonOrOptionName,
+          };
+        }
+
+        // Resolve variantInfo
+        VariantInfo? resolvedVariantInfo;
+        if (item.variantOptionId != null) {
+          final vIdStr = item.variantOptionId.toString();
+          String? sku = existingLocal?.variantInfo?.variantSku;
+          dynamic options = existingLocal?.variantInfo?.variantOptions;
+          String? vImg = existingLocal?.variantInfo?.variantImage;
+
+          if ((sku == null || sku.isEmpty) &&
+              resolvedAddonOrOptionName != null) {
+            sku = resolvedAddonOrOptionName;
+          }
+          if (options == null && resolvedAddonOrOptionName != null) {
+            options = {'option': resolvedAddonOrOptionName};
+          }
+
+          resolvedVariantInfo = VariantInfo(
+            variantId: vIdStr,
+            variantPrice: unitPrice.toStringAsFixed(2),
+            variantSku: sku,
+            variantImage: vImg,
+            variantOptions: options,
+          );
+        } else {
+          resolvedVariantInfo = existingLocal?.variantInfo;
+        }
+
+        // Resolve name
+        String resolvedName = item.productName;
+        if (existingLocal?.name != null && existingLocal!.name!.isNotEmpty) {
+          resolvedName = existingLocal.name!;
+        } else if (addonName != null && !item.productName.contains(addonName)) {
+          resolvedName = '${item.productName} ($addonName)';
+        } else if (optionName != null &&
+            !item.productName.contains(optionName)) {
+          resolvedName = '${item.productName} ($optionName)';
+        }
 
         final cartProduct = CartProductModel(
-          id: item.variantOptionId != null
-              ? '${item.productId}~${item.variantOptionId}'
-              : item.productId.toString(),
-          name: addonName != null
-              ? '${item.productName} ($addonName)'
-              : item.productName,
-          photo: item.productImage ?? matchedProduct?.photo,
+          id: itemId,
+          name: resolvedName,
+          photo: resolvedPhoto,
           price: unitPrice.toStringAsFixed(2),
-          discountPrice: '0.0',
+          discountPrice: existingLocal?.discountPrice ?? '0.0',
+          merchantPrice: existingLocal?.merchantPrice,
+          vendorID: cart.outletId?.toString() ?? existingLocal?.vendorID,
+          vendorName: existingLocal?.vendorName,
           quantity: item.quantity,
-          vendorID: cart.outletId?.toString(),
-          extras: addonName != null ? [addonName] : null,
-          variantInfo: item.variantOptionId != null
-              ? VariantInfo(
-                  variantId: item.variantOptionId.toString(),
-                  variantPrice: unitPrice.toStringAsFixed(2),
-                  variantSku: displayName,
-                  variantOptions: displayName != null
-                      ? {'option': displayName}
-                      : null,
-                )
-              : null,
+          extrasPrice: existingLocal?.extrasPrice,
+          extras: resolvedExtras,
+          variantInfo: resolvedVariantInfo,
+          promoId: existingLocal?.promoId,
+          selectedOption: resolvedSelectedOption,
         );
         serverCartItems.add(cartProduct);
       }
